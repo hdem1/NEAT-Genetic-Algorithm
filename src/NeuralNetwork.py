@@ -1,13 +1,15 @@
+from xmlrpc.client import MININT
 import numpy as np
 import copy
 
 class Node:
-    def __init__(self, actFunction, bias, layerLevel, enabled, historyValue):
+    def __init__(self, actFunction, bias, layerLevel, enabled, historyValue, scale = 1):
         self.actFunction = actFunction
         self.bias = bias
         self.layerLevel = layerLevel
         self.enabled = enabled
         self.historyValue = historyValue
+        self.scale = scale
 
 class Edge:
     def __init__(self, origin, destination, weight, enabled, historyValue):
@@ -28,7 +30,7 @@ class NeuralNetwork:
     #INITIALIZERS:
     def __init__(self):
         #Tracing nodes/edges:
-        self.nodes = [] 
+        self.nodes = []
         self.edges = [] 
         #Monitoring connections:
         self.connectionsTo = [] # each element is a list of edges running to that node
@@ -40,6 +42,8 @@ class NeuralNetwork:
         # For dynamic programming:
         self.values = []
         self.visited = []
+        # For performance monitoring:
+        self.fitness = MININT
 
     @classmethod
     def randomBaseNetwork(cls, inputs, outputs):
@@ -51,41 +55,21 @@ class NeuralNetwork:
         #Making arrays:
         newNN.values = np.zeros(inputs+outputs)
         newNN.visited = np.zeros(inputs+outputs)
-        newNN.nodes = [ [] for _ in range(inputs+outputs)]
-        newNN.edges = [ [] for _ in range(inputs*outputs)]
         newNN.connectionsTo = [ [] for _ in range(inputs+outputs)]
         newNN.connectionsFrom = [ [] for _ in range(inputs+outputs)]
 
         #Setting input nodes:
-        for i in range(inputs):
-            newNode = np.zeros(newNN.nodeListLength)
-            newNode[newNN.actFunctionIndex] = newNN.identityActFunctionID
-            newNode[newNN.biasIndex] = 0
-            newNode[newNN.scaleIndex] = 1
-            newNode[newNN.layerLevelIndex] = 0
-            newNode[newNN.nodeEnabledIndex] = 1
-            newNode[newNN.nodeHistoryIndex] = i
-            newNN[i] = newNode
-
+        newNN.nodes = [Node(newNN.identityActFunctionID, 0, 0,1, i) for i in range(inputs)]
+        
         #Setting output nodes:
-        for i in range(outputs):
-            newNode = np.zeros(newNN.nodeListLength)
-            newNode[newNN.actFunctionIndex] = newNN.sigmoidActFunctionID
-            newNode[newNN.biasIndex] = 0
-            newNode[newNN.scaleIndex] = 1
-            newNode[newNN.layerLevelIndex] = 1
-            newNode[newNN.nodeEnabledIndex] = 1
-            newNode[newNN.nodeHistoryIndex] = inputs + i
-            newNN[inputs + i] = newNode
+        newNN.nodes = newNN.nodes + [Node(newNN.sigmoidActFunctionID,0,1,1,inputs+i) for i in range(outputs)]
 
         #Creating edges:
         for origin in range(inputs):
-            for dest in range(outputs):
-                newEdge = np.zeros(newNN.edgeListLength)
-                newEdge[newNN.originIndex] = origin
-                newEdge[newNN.destIndex] = dest
-                newEdge[newNN.weightIndex] = (1- 2* np.random.random()) * 3
-                newEdge[newNN.]
+            for dest in range(inputs, inputs + outputs):
+                newNN.edges.append(Edge(origin, dest, (1- 2* np.random.random()) * 3, 1, origin * outputs + dest))
+                newNN.connectionsTo[dest].append(origin)
+                newNN.connectionsFrom[origin].append(dest)
 
         return newNN
 
@@ -103,10 +87,38 @@ class NeuralNetwork:
 
     #---------------------------------------------------
     #MODIFIERS:
-    def insertNode(self, node1, node2, lastEdgeID, lastNodeID):
+    def insertRandomNode(self, edgeIndex, firstEdgeID, newNodeID):
+        edge = self.edges[edgeIndex]
+        originNode = self.nodes[edge.origin]
+        destNode = self.nodes[edge.dest]
 
+        #disable the current edge:
+        self.edges[edgeIndex].enabled = False
+
+        #Insert a new node:
+        newNode = Node(self.leakyReluActFunctionID, 0, (originNode.layerLevel + destNode.layerLevel) / 2, True, newNodeID)
+        self.nodes.append(newNode)
+
+        #Insert new connections:
+        self.connectionsFrom.append([len(self.edges)+1])
+        self.connectionsTo.append([len(self.edges)])
+
+        #Insert new edges:
+        newEdge1 = Edge(edge.origin,len(self.nodes)-1, edge.weight,True, firstEdgeID)
+        newEdge2 = Edge(len(self.nodes)-1, edge.dest, 1, True, firstEdgeID+1)
+        self.edges.append(newEdge1)
+        self.edges.append(newEdge2)
+
+        # if self.nodes[node1].layerLevel > self.nodes[node2].layerLevel:
+        #     firstNode = node1
+        #     secondNode = node2
+        # elif self.nodes[node1].layerLevel < self.nodes[node2].layerLevel:
+        #     firstNode = node2
+        #     secondNode = node1
 
     def disableNode(self, node):
+
+        for incoming in connections
 
     def insertConnection(self, node1, node2):
 
@@ -155,14 +167,14 @@ class NeuralNetwork:
         #Looping through connections
         for edgeIndex in self.connectionsTo[nodeIndex]:
             edge = self.edges[edgeIndex]
-            if edge[self.edgeEnabledIndex] == 1: #if enabled
-                value += edge[self.weightIndex] * self.getNodeValue(edge[self.originIndex])
+            if edge.enabled == 1: #if enabled
+                value += edge.weight * self.getNodeValue(edge.origin)
 
         #Activation function
         value = self.activationFunction(value, node)
         
         #Scaling
-        value *= self.nodes[node][self.scaleIndex]
+        value *= self.nodes[node].scale
 
         #Saving value:
         self.visited[node] = 1
@@ -170,7 +182,7 @@ class NeuralNetwork:
         return value
 
     def activationFunction(self, value, nodeIndex):
-        func = self.nodes[nodeIndex][self.actFunctionIndex]
+        func = self.nodes[nodeIndex].actFunction
         if func == self.identityActFunctionID:
             output = value
         elif func == self.leakyReluActFunctionID:
