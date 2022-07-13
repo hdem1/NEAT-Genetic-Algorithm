@@ -26,6 +26,11 @@ class NeuralNetwork:
     identityActFunctionID = 0
     leakyReluActFunctionID = 1
     sigmoidActFunctionID = 2
+    #Mutation magnitudes:
+    weightMagnitude = 3
+    biasMagnitude = 3
+    distribution = "rand" #rand or norm
+    randomOnCreation = True
 
     #INITIALIZERS:
     def __init__(self):
@@ -87,7 +92,7 @@ class NeuralNetwork:
 
     #---------------------------------------------------
     #MODIFIERS:
-    def insertRandomNode(self, edgeIndex, firstEdgeID, newNodeID):
+    def insertNode(self, edgeIndex, firstEdgeID, newNodeID):
         edge = self.edges[edgeIndex]
         originNode = self.nodes[edge.origin]
         destNode = self.nodes[edge.dest]
@@ -109,6 +114,14 @@ class NeuralNetwork:
         self.edges.append(newEdge1)
         self.edges.append(newEdge2)
 
+        if self.randomOnCreation:
+            if self.distribution == "rand":
+                self.nodes[-1].bias = (1-2*np.random.random()) * self.biasMagnitude
+                self.edges[-2].weight = (1-2*np.random.random()) * self.weightMagnitude
+            if self.distribution == "norm":
+                self.nodes[-1].bias = (1-2*np.random.normal()) * self.biasMagnitude
+                self.edges[-2].weight = (1-2*np.random.normal()) * self.weightMagnitude
+
         # if self.nodes[node1].layerLevel > self.nodes[node2].layerLevel:
         #     firstNode = node1
         #     secondNode = node2
@@ -116,13 +129,22 @@ class NeuralNetwork:
         #     firstNode = node2
         #     secondNode = node1
 
-    def disableNode(self, node):
+    def disableNode(self, nodeIndex):
+        self.nodes[nodeIndex].enabled = False
+        for outgoing in self.connectionsFrom[nodeIndex]:
+            self.edges[outgoing].enabled = False
 
-        for incoming in connections
+    def insertConnection(self, node1, node2, newEdgeID):
+        newEdge1 = Edge(node1, node2, 1,True, newEdgeID)
+        if self.randomOnCreation:
+            if self.distribution == "rand":
+                newEdge1.weight = (1-2*np.random.random()) * self.weightMagnitude
+            if self.distribution == "norm":
+                newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
+        self.edges.append(newEdge1)
 
-    def insertConnection(self, node1, node2):
-
-    def disableConnection(self, node):
+    def disableConnection(self, edgeIndex):
+        self.edges[edgeIndex].enabled = False
 
     #---------------------------------------------------
     #ACCESSORS:
