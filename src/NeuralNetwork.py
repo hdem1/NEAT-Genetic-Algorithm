@@ -174,7 +174,7 @@ class NeuralNetwork:
         #Making the output
         output = np.zeros(self.outputs)
         for i in range(self.outputs):
-            output[i] = getNodeValue(self.inputs + i)
+            output[i] = self.getNodeValue(self.inputs + i)
         
         return output
 
@@ -193,14 +193,14 @@ class NeuralNetwork:
                 value += edge.weight * self.getNodeValue(edge.origin)
 
         #Activation function
-        value = self.activationFunction(value, node)
+        value = self.activationFunction(value, nodeIndex)
         
         #Scaling
-        value *= self.nodes[node].scale
+        value *= self.nodes[nodeIndex].scale
 
         #Saving value:
-        self.visited[node] = 1
-        self.values[node] = value
+        self.visited[nodeIndex] = 1
+        self.values[nodeIndex] = value
         return value
 
     def activationFunction(self, value, nodeIndex):
