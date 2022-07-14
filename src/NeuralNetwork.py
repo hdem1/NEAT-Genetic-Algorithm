@@ -3,21 +3,59 @@ import numpy as np
 import copy
 
 class Node:
-    def __init__(self, actFunction, bias, layerLevel, enabled, historyValue, scale = 1):
-        self.actFunction = actFunction
-        self.bias = bias
-        self.layerLevel = layerLevel
-        self.enabled = enabled
-        self.historyValue = historyValue
-        self.scale = scale
+    def __init__(self, *args):
+        if len(args) == 1:
+            strings = args[0].split(",")
+            self.actFunction = int(strings[0])
+            self.bias = float(strings[1])
+            self.layerLevel = float(strings[2])
+            self.enabled = bool(strings[3])
+            self.historyValue = int(strings[4])
+            self.scale = float(strings[5])
+        if len(args) > 1:
+            self.actFunction = args[0]
+            self.bias = args[1]
+            self.layerLevel = args[2]
+            self.enabled = args[3]
+            self.historyValue = args[4]
+            self.scale = 1
+        if len(args) == 6:
+            self.scale = args[5]
+    
+    def getString(self):
+        output = ""
+        output = output + str(self.actFunction) + ","
+        output = output + str(self.bias) + ","
+        output = output + str(self.layerLevel) + ","
+        output = output + str(self.enabled) + ","
+        output = output + str(self.historyValue) + ","
+        output = output + str(self.scale) + "\n"
+        return output
 
 class Edge:
-    def __init__(self, origin, destination, weight, enabled, historyValue):
-        self.origin = origin
-        self.dest = destination
-        self.weight = weight
-        self.enabled = enabled
-        self.historyValue = historyValue
+    def __init__(self, *args):
+        if len(args) == 1:
+            strings = args[0].split(",")
+            self.origin = int(strings[0])
+            self.dest = int(strings[1])
+            self.weight = float(strings[2])
+            self.enabled = bool(strings[3])
+            self.historyValue = int(strings[4])
+        if len(args) == 5:
+            self.origin = int(args[0])
+            self.dest = int(args[1])
+            self.weight = float(args[2])
+            self.enabled = bool(args[3])
+            self.historyValue = int(args[4])
+    
+    def getString(self):
+        output = ""
+        output = output + str(self.origin) + ","
+        output = output + str(self.dest) + ","
+        output = output + str(self.weight) + ","
+        output = output + str(self.enabled) + ","
+        output = output + str(self.historyValue) +"\n"
+        return output
 
 class NeuralNetwork:
 
@@ -70,11 +108,13 @@ class NeuralNetwork:
         newNN.nodes = newNN.nodes + [Node(newNN.sigmoidActFunctionID,0,1,1,inputs+i) for i in range(outputs)]
 
         #Creating edges:
+        edgeCount = 0
         for origin in range(inputs):
             for dest in range(inputs, inputs + outputs):
                 newNN.edges.append(Edge(origin, dest, (1- 2* np.random.random()) * 3, 1, origin * outputs + dest))
-                newNN.connectionsTo[dest].append(origin)
-                newNN.connectionsFrom[origin].append(dest)
+                newNN.connectionsTo[dest].append(edgeCount)
+                newNN.connectionsFrom[origin].append(edgeCount)
+                edgeCount +=1
 
         return newNN
 
@@ -82,11 +122,31 @@ class NeuralNetwork:
     def childFromParents(cls, parent1, parent2):
         newNN = cls()
 
+        
+
         return newNN
 
     @classmethod
-    def networkFromString(cls, str):
+    def networkFromString(cls, strings):
         newNN = cls()
+        firstLine = strings[0].split(",")
+        numNodes = int(firstLine[0])
+        numEdges = int(firstLine[1])
+        newNN.inputs = int(firstLine[2])
+        newNN.outputs = int(firstLine[3])
+        newNN.species = int(firstLine[4])
+        #Define Nodes:
+        for n in range(numNodes):
+            newNN.nodes.append(Node(strings[n+1]))
+        #Define connection arrays:
+        newNN.connectionsTo = [ [] for _ in range(numNodes)]
+        newNN.connectionsFrom = [ [] for _ in range(numNodes)]
+
+        #Define edges:
+        for e in range(numEdges):
+            newNN.edges.append(Edge(strings[numNodes+1+e]))
+            newNN.connectionsFrom[newNN.edges[-1].origin].append(e)
+            newNN.connectionsTo[newNN.edges[-1].dest].append(e)
 
         return newNN
 
@@ -122,13 +182,6 @@ class NeuralNetwork:
                 self.nodes[-1].bias = (1-2*np.random.normal()) * self.biasMagnitude
                 self.edges[-2].weight = (1-2*np.random.normal()) * self.weightMagnitude
 
-        # if self.nodes[node1].layerLevel > self.nodes[node2].layerLevel:
-        #     firstNode = node1
-        #     secondNode = node2
-        # elif self.nodes[node1].layerLevel < self.nodes[node2].layerLevel:
-        #     firstNode = node2
-        #     secondNode = node1
-
     def disableNode(self, nodeIndex):
         self.nodes[nodeIndex].enabled = False
         for outgoing in self.connectionsFrom[nodeIndex]:
@@ -149,9 +202,23 @@ class NeuralNetwork:
     #---------------------------------------------------
     #ACCESSORS:
     def getNetworkString(self):
-        str = ""
+        output = ""
+        #Line 1 - numNodes,numEdges
+        output = output + str(len(self.nodes)) + "," 
+        output = output + str(len(self.edges)) + ","
+        output = output + str(self.inputs) + ","
+        output = output + str(self.outputs) + ","
+        output = output + str(self.species) + ","
+        output = output + str(self.fitness) + "\n"
 
-        return str
+        #Nodes:
+        for node in self.nodes:
+            output = output + node.getString()
+
+        #Edges:
+        for edge in self.edges:
+            output = output + edge.getString()
+        return output
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)
@@ -215,4 +282,66 @@ class NeuralNetwork:
         return output
 
     def getDistance(self, otherNetwork):
+        #Getting the larger number of genes
+        numGenes1 = len(self.edges) + len(self.nodes)
+        numGenes2 = len(otherNetwork.edges) + len(otherNetwork.nodes)
+        N = max(numGenes1,numGenes2)
 
+        #Setting up variables:
+        disjoint = 0
+        excess = 0
+        avgWeightDif = 0
+        avgBiasDif = 0
+        edgeCount = 0
+        nodeCount = 0
+
+        #Compare node genes:
+        index1 = 0
+        index2 = 0
+        while index1 < len(self.nodes) and index2  < len(otherNetwork.nodes):
+            nodeCount += 1
+            history1 = self.nodes[index1].historyValue
+            history2 = otherNetwork.nodes[index2].historyValue
+            if history1 < history2:
+                disjoint += 1
+                index1 += 1
+            elif history2 < history1:
+                disjoint += 1
+                index2 += 1
+            else:
+                avgBiasDif += abs(self.nodes[index2].bias - otherNetwork.nodes[index2].bias)
+                index1 += 1
+                index2 += 1
+        excess += max(len(self.nodes) - index1, len(otherNetwork.nodes) - index2)
+        avgBiasDif /= nodeCount
+
+        #Compare edge genes:
+        index1 = 0
+        index2 = 0
+        while index1 < len(self.edges) and index2  < len(otherNetwork.edges):
+            edgeCount += 1
+            history1 = self.edges[index1].historyValue
+            history2 = otherNetwork.edges[index2].historyValue
+            if history1 < history2:
+                disjoint += 1
+                index1 += 1
+            elif history2 < history1:
+                disjoint += 1
+                index2 += 1
+            else:
+                avgWeightDif += abs(self.edges[index2].weight - otherNetwork.edges[index2].weight)
+                index1 += 1
+                index2 += 1
+        excess += max(len(self.edges) - index1, len(otherNetwork.edges) - index2)
+        avgWeightDif /= edgeCount
+
+        #normalize for genome size:
+        disjoint /= (edgeCount + nodeCount)
+        excess /= (edgeCount + nodeCount)
+
+        c1 = 1
+        c2 = 1
+        c3 = 1
+        c4 = 1
+        output = c1*disjoint + c2*excess + c3*avgWeightDif + c4*avgBiasDif
+        return output
