@@ -4,6 +4,13 @@ import copy
 
 class Node:
     def __init__(self, *args):
+        if len(args) == 0:
+            self.actFunction = 0
+            self.bias = 0
+            self.layerLevel = 0
+            self.enabled = False
+            self.historyValue = 0
+            self.scale = 0
         if len(args) == 1:
             strings = args[0].split(",")
             self.actFunction = int(strings[0])
@@ -122,7 +129,55 @@ class NeuralNetwork:
     def childFromParents(cls, parent1, parent2):
         newNN = cls()
 
+        #Combining nodes
+        index1 = 0
+        index2 = 0
+        while index1 < len(parent1.nodes) and index2 < len(parent2.nodes):
+            history1 = parent1.nodes[index1].historyValue
+            history2 = parent2.nodes[index2].historyValue
+            if history1 < history2:
+                newNN.nodes.append(Node(parent1.nodes[index1].getString()))
+                index1 += 1
+            elif history2 < history1:
+                newNN.nodes.append(Node(parent2.nodes[index2].getString()))
+                index2 += 1
+            else:
+                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 1000
+                if np.random.random() < threshold:
+                    newNN.nodes.append(Node(parent1.nodes[index1].getString()))
+                else:
+                    newNN.nodes.append(Node(parent2.nodes[index2].getString()))
+                index1 += 1
+                index2 += 1
         
+        #Creating connection matrices:
+        newNN.connectionsTo = [ [] for _ in range(len(newNN.nodes))]
+        newNN.connectionsFrom = [ [] for _ in range(len(newNN.nodes))]
+                
+        #Combining edges:
+        index1 = 0
+        index2 = 0
+        edgeCount = 0
+        while index1 < len(parent1.edges) and index2 < len(parent2.edges):
+            history1 = parent1.edges[index1].historyValue
+            history2 = parent2.edges[index2].historyValue
+            if history1 < history2:
+                newNN.edges.append(Edge(parent1.edges[index1].getString()))
+                index1 += 1
+            elif history2 < history1:
+                newNN.edges.append(Edge(parent2.edges[index2].getString()))
+                index2 += 1
+            else:
+                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 1000
+                if np.random.random() < threshold:
+                    newNN.edges.append(Edge(parent1.edges[index1].getString()))
+                else:
+                    newNN.edges.append(Edge(parent2.edges[index2].getString()))
+                index1 += 1
+                index2 += 1
+            newNN.connectionsTo[newNN.edges[-1].dest].append(edgeCount)
+            newNN.connectionsFrom[newNN.edges[-1].origin].append(edgeCount)
+            edgeCount += 1
 
         return newNN
 
