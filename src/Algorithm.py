@@ -3,6 +3,7 @@ from tokenize import String
 from xmlrpc.client import MAXINT, MININT
 import numpy as np
 from EnvironmentHandler import EnvironmentHandler
+from Population import Population
 from NeuralNetwork import NeuralNetwork
 import random
 from os.path import exists, expanduser, isdir
@@ -12,6 +13,7 @@ class GeneticAlgorithm:
 
     def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)
+        self.population = Population(env, numChildren)
         self.numGenerations = numGenerations
         self.numChildren = numChildren
         self.numTestsPerChild = numTestsPerChild
@@ -19,10 +21,8 @@ class GeneticAlgorithm:
         self.obsRanges = self.envHandler.getObservationRanges()
         self.survivalRate = survivalRate
         self.numGenerationsDone = 0
-        self.combinationRatio = 0.3
-        self.randomRatio = 0.2
-        self.mutationRatio = 1 - self.combinationRatio - self.randomRatio
-        self.bestSet = []
+        self.currentGeneration = []
+        self.species = []
         self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
         self.id = id
@@ -35,9 +35,9 @@ class GeneticAlgorithm:
                     self.id+=1
             mkdir(self.rootFolder + env + "_" + self.id + "/")
 
-        for i in range(int(np.ceil(numChildren * survivalRate))):
+        for i in range(numChildren):
             newNN = NeuralNetwork.randomBaseNetwork(len(self.obsRanges), len(self.actionRanges))
-            self.bestSet.append(newNN)
+            self.currentGeneration.append(newNN)
     
     def makeNewGeneration(self):
         newGeneration =  []
