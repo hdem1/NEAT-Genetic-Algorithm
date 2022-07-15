@@ -5,49 +5,39 @@ import numpy as np
 from EnvironmentHandler import EnvironmentHandler
 from NeuralNetwork import NeuralNetwork
 import random
-from os.path import exists, expanduser
+from os.path import exists, expanduser, isdir
+from os import mkdir
 
 class GeneticAlgorithm:
 
-    def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, activationFunctions = [], outputActivationFunction = "S", survivalRate = 0.05, flexibleLayerSizing = True, combinationRatio = 0.3, randomRatio = 0.3):
+    def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)
         self.numGenerations = numGenerations
         self.numChildren = numChildren
-        self.flexibleLayerSizing = flexibleLayerSizing
         self.numTestsPerChild = numTestsPerChild
         self.actionRanges = self.envHandler.getActionRanges()
         self.obsRanges = self.envHandler.getObservationRanges()
-        self.activationFunctions = activationFunctions
-        self.activationFunctions.append(outputActivationFunction)
-        self.startingLayerSizes.insert(0,len(self.obsRanges))
-        self.startingLayerSizes.append(len(self.actionRanges))
         self.survivalRate = survivalRate
         self.numGenerationsDone = 0
-        self.combinationRatio = combinationRatio
-        self.randomRatio = randomRatio
-        self.mutationRatio = 1 - combinationRatio - randomRatio
+        self.combinationRatio = 0.3
+        self.randomRatio = 0.2
+        self.mutationRatio = 1 - self.combinationRatio - self.randomRatio
         self.bestSet = []
         self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
+        self.id = id
+        self.rootFolder = "/Users/henrydemarest/Documents/Random Coding Projects/MachineLearningExperiments/NEAT-Genetic-Algorithm/"
+        if self.id == -1:
+            self.id = 0
+            if isdir(self.rootFolder + env + "_" + self.id + "/"):
+                self.id += 1
+                while isdir(self.rootFolder + env + "_" + self.id + "/"):
+                    self.id+=1
+            mkdir(self.rootFolder + env + "_" + self.id + "/")
+
         for i in range(int(np.ceil(numChildren * survivalRate))):
-            newNN = NeuralNetwork()
-            newNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
+            newNN = NeuralNetwork.randomBaseNetwork(len(self.obsRanges), len(self.actionRanges))
             self.bestSet.append(newNN)
-        print(self.startingLayerSizes)
-    
-    def loadModel(self, filename):
-        self.modelSaved = False
-        self.filename = filename
-        file = open(self.folder + filename, "r")
-        lines = file.readlines()
-        NN = NeuralNetwork()
-        NN.makeModelFromStrings(lines)
-        self.bestSet[0] = NN
-        self.startingLayerSizes = self.bestSet[0].getLayerSizes()
-        for i in range(1,len(self.bestSet)):
-            randomNN = NeuralNetwork()
-            randomNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
-            self.bestSet[i] = randomNN
     
     def makeNewGeneration(self):
         newGeneration =  []
@@ -55,12 +45,16 @@ class GeneticAlgorithm:
         combinations = round(self.numChildren - len(self.bestSet) * self.combinationRatio)
         randoms = self.numChildren - len(self.bestSet) * (1+mutationsPerPrev) - combinations
         for NN in self.bestSet:
+            #print(NN.getWeights())
             newGeneration.append(NN)
             for i in range(mutationsPerPrev):
+                #print(NN.getWeights())
                 newNN = NeuralNetwork()
                 newNN.setWeightsAndBiases(NN.getWeights(), NN.getBiases(), NN.getActFuncts())
                 newNN.insertMutations(mutationRate = (i+1)/mutationsPerPrev/4) #1 -> 1/2 -> 1/4
+                #print(newNN.getWeights())
                 newGeneration.append(newNN)
+            #print("--------")
         for i in range(combinations):
             index1 = int(np.floor(random.random() * len(self.bestSet)))
             index2 =int(np.floor(random.random() * len(self.bestSet)))
@@ -87,6 +81,7 @@ class GeneticAlgorithm:
                 lastPrint = i
                 print("*",end = "", flush = True)
             rewards.append(self.envHandler.runMultipleSimulations(self.numTestsPerChild, newGeneration[i], modifyReward=modifyReward))#, displaying = True))
+            #print(rewards[i])
         if printProgress:
             print("]")
 
@@ -179,6 +174,28 @@ class GeneticAlgorithm:
 
         file.close()
 
+    
+    
+    def startNewFile(self):
+        self.folder, self.filename = self.makeNewModelFileName()
+        self.modelSaved = False
+    
+    def loadGeneration(self, genNum):    
+    
+    def loadModel(self, filename):
+        self.modelSaved = False
+        self.filename = filename
+        file = open(self.folder + filename, "r")
+        lines = file.readlines()
+        NN = NeuralNetwork()
+        NN.makeModelFromStrings(lines)
+        self.bestSet[0] = NN
+        self.startingLayerSizes = self.bestSet[0].getLayerSizes()
+        for i in range(1,len(self.bestSet)):
+            randomNN = NeuralNetwork()
+            randomNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
+            self.bestSet[i] = randomNN
+    
     def savePerformance(self, reward, iterations, printInfo = True):
         #All following lines = training performances
         if printInfo:   
@@ -189,10 +206,6 @@ class GeneticAlgorithm:
         lastline.append(str(iterations)+"\n")
         file.writelines(lastline)
         file.close()
-    
-    def startNewFile(self):
-        self.folder, self.filename = self.makeNewModelFileName()
-        self.modelSaved = False
-    
+
     def close(self):
         self.envHandler.closeEnvironment()
