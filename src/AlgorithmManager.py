@@ -9,7 +9,7 @@ import random
 from os.path import exists, expanduser, isdir
 from os import mkdir
 
-class GeneticAlgorithm:
+class AlgorithmManager:
 
     def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)

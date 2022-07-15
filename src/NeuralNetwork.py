@@ -394,9 +394,9 @@ class NeuralNetwork:
         disjoint /= (edgeCount + nodeCount)
         excess /= (edgeCount + nodeCount)
 
-        c1 = 1
-        c2 = 1
-        c3 = 1
-        c4 = 1
+        c1 = 0.75
+        c2 = 0.75
+        c3 = 0.1
+        c4 = 0.1
         output = c1*disjoint + c2*excess + c3*avgWeightDif + c4*avgBiasDif
         return output
