@@ -250,6 +250,7 @@ class NeuralNetwork:
             if self.distribution == "norm":
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
+        #ADD WAY TO ADJUST THE layerLevels of the nodes - find the maximum of the nodes to and the minimum of the nodes from and split it from there
 
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
@@ -277,9 +278,21 @@ class NeuralNetwork:
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)
+    
+    def getNode(self, index):
+        return self.nodes[index]
 
     def getEdges(self):
         return copy.deepcopy(self.edges)
+    
+    def getEdge(self, index):
+        return self.edges[index]
+    
+    def getNumEdges(self):
+        return len(self.edges)
+
+    def getNumNodes(self):
+        return len(self.nodes)
 
     #---------------------------------------------------
     #OTHER METHODS:
@@ -324,6 +337,9 @@ class NeuralNetwork:
         self.visited[nodeIndex] = 1
         self.values[nodeIndex] = value
         return value
+    
+    def resetFitnesS(self):
+        self.fitness = MININT
 
     def activationFunction(self, value, nodeIndex):
         func = self.nodes[nodeIndex].actFunction
