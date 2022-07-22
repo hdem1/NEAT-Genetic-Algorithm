@@ -69,17 +69,18 @@ class Population:
                 while random.random() < self.addConnectionRate:
                     node1 = round(random.random() * newNN.getNumNodes())
                     node2 = round(random.random() * newNN.getNumNodes())
-                    while (node1 != node2):
+                    while (node1 != node2 and newNN.areConnected(node1,node2) != 1):
                         node2 = round(random.random() * newNN.getNumNodes())
-                    newNN.insertConnection(node1, node2, self.latestConnectionID+1)
+                    if newNN.areConnected(node1,node2) == 0:
+                        newNN.insertConnection(node1, node2, self.latestConnectionID+1)
+                    else:
+                        newNN.enableConnection(newNN.getEdge(node1,node2))
                     self.latestConnectionID += 1
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
                     edgeIndex = round(random.random() * newNN.getNumEdges())
                     newNN.disableNode(edgeIndex, edgeIndex)
                 self.NNs.append(newNN)
-
-            
 
     def makeSpeciesLists(self, NNs, difLimit):
         speciesLists = []
@@ -118,9 +119,38 @@ class Population:
 
     #FILE READING/WRITING:
     def savePopulation(self):
+        output = self.envName + ","
+        output = output + str(len(self.NNs)) + ","
+        output = output + str(self.survivalRate) + ","
+        output = output + str(self.addNodeRate) + ","
+        output = output + str(self.disableNodeRate) + ","
+        output = output + str(self.addConnectionRate) + ","
+        output = output + str(self.disableConnectionRate) + ","
+        output = output + str(self.inputs) + ","
+        output = output + str(self.outputs) + ","
+        output = output + str(self.latestNodeID) + ","
+        output = output + str(self.latestConnectionID) + "\n"
+        for NN in self.NNs:
+            output = output + NN.getNetworkString()
     
-    def loadPopulation(self, filename):
+    @classmethod
+    def loadPopulation(cls, lines):
+        firstLine = lines[0].split(",") 
+        newPop = cls(firstLine[0], int(firstLine[7]), int(firstLine[8]), int(firstLine[1]), float(firstLine[2]))
+        newPop.addNodeRate = float(firstLine[3])
+        newPop.disableNodeRate = float(firstLine[4])
+        newPop.addConnectionRate = float(firstLine[5])
+        newPop.disableConnectionRate = float(firstLine[6])
+        newPop.latestNodeID = int(firstLine[9])
+        newPop.latestNodeID = int(firstLine[10])
+        currLine = 1
+        for i in range(newPop.size):
+            infoLine = lines[currLine].split(",")
+            numLines = 1 + int(infoLine[0]) + int(infoLine[1])
+            newPop.NNs.append(NeuralNetwork.networkFromString(lines[currLine:(currLine+numLines)]))
+            currLine += numLines
+        return newPop
     
-    def saveBestModel(self):
-
+    def getBestModelString(self):
+        return self.getBestModel().getNetworkString()
 
