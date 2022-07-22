@@ -1,4 +1,5 @@
 from math import ceil
+from xmlrpc.client import MININT
 import numpy as np
 from NeuralNetwork import NeuralNetwork
 import random
@@ -19,6 +20,24 @@ class Population:
     
     #EVOLUTION:
     def evolveGeneration(self):
+        speciesLists = makeSpeciesLists(self.NNs, 1)
+        avgFitness = getPopulationAverageFitness()
+        self.NNs = []
+        for species in speciesLists:
+            #Get the new number of NNs in that species:
+            speciesSize = len(species)
+            popTotalFitness = 0
+            for NN in species:
+                popTotalFitness += NN.fitness
+            newNum = round(popTotalFitness/avgFitness)
+
+            #Preserve the best one:
+            bestNN = species[0]
+            for NN in species:
+                if NN.fitness > bestNN.fitness:
+                    bestNN = NN
+            self.NNs.append()
+            
 
     def makeSpeciesLists(self, NNs, difLimit):
         speciesLists = []
@@ -36,8 +55,20 @@ class Population:
 
     #ACCESSORS:
     def getBestModel(self):
+        bestNN = self.NNs[0]
+        for NN in self.NNs:
+            if NN.fitness > bestNN.fitness:
+                bestNN = NN
+        return bestNN
     
     def getNeuralNetwork(self, index):
+        return self.NNs[index]
+
+    def getPopulationAverageFitness(self):
+        total = 0
+        for NN in self.NNs:
+            total += NN.fitness
+        return total/len(self.NNs)
 
     #FILE READING/WRITING:
     def savePopulation(self):
