@@ -270,7 +270,7 @@ class NeuralNetwork:
             if self.distribution == "norm":
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
-        
+
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
 
@@ -296,9 +296,17 @@ class NeuralNetwork:
         return output
 
     def areConnected(self, nodeIndex1, nodeIndex2):
-        if 
-        for edge1 in self.connectionsFrom[nodeIndex1]:
-            for edge2 in self.
+        if self.nodes[nodeIndex1].layerLevel < self.nodes[nodeIndex2].layerLevel:
+            firstIndex = nodeIndex1
+            secondIndex = nodeIndex2
+        else:
+            firstIndex = nodeIndex2
+            secondIndex = nodeIndex1
+        for edge1 in self.connectionsFrom[firstIndex]:
+            for edge2 in self.connectionsTo[secondIndex]:
+                if edge1 == edge2:
+                    return True
+        return False
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)
