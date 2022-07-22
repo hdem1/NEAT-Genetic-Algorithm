@@ -13,7 +13,7 @@ class AlgorithmManager:
 
     def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)
-        self.population = Population(env, numChildren)
+        self.population = Population(env, len(self.obsRanges), len(self.actionRanges), numChildren)
         self.numGenerations = numGenerations
         self.numChildren = numChildren
         self.numTestsPerChild = numTestsPerChild
