@@ -242,16 +242,35 @@ class NeuralNetwork:
         for outgoing in self.connectionsFrom[nodeIndex]:
             self.edges[outgoing].enabled = False
 
-    def insertConnection(self, node1, node2, newEdgeID):
-        newEdge1 = Edge(node1, node2, 1,True, newEdgeID)
+    def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID):
+        if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
+            firstIndex = nodeIndex1
+            secondIndex = nodeIndex2
+        elif self.nodes[nodeIndex2].layerLevel < self.nodes[nodeIndex2].layerLevel:
+            firstIndex = nodeIndex2
+            secondIndex = nodeIndex1
+        else:
+            firstIndex = nodeIndex1
+            secondIndex = nodeIndex2 
+            #Fixing layer levels:
+            maxIncoming = 0
+            for edgeIndex in self.connectionsTo[nodeIndex1]:
+                if self.nodes[self.edges[edgeIndex].origin].layerLevel > maxIncoming:
+                    maxIncoming = self.nodes[self.edges[edgeIndex].origin].layerLevel
+            minOutgoing = 1
+            for edgeIndex in self.connectionsFrom[nodeIndex2]:
+                if self.nodes[self.edges[edgeIndex].dest].layerLevel < minOutgoing:
+                    minOutgoing = self.nodes[self.edges[edgeIndex].dest].layerLevel
+            self.nodes[nodeIndex1].layerLevel = maxIncoming + (minOutgoing-maxIncoming) / 3
+            self.nodes[nodeIndex2].layerLevel = maxIncoming + 2 * (minOutgoing-maxIncoming) / 3
+        newEdge1 = Edge(firstIndex, secondIndex, 1,True, newEdgeID)
         if self.randomOnCreation:
             if self.distribution == "rand":
                 newEdge1.weight = (1-2*np.random.random()) * self.weightMagnitude
             if self.distribution == "norm":
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
-        #ADD WAY TO ADJUST THE layerLevels of the nodes - find the maximum of the nodes to and the minimum of the nodes from and split it from there
-
+        
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
 
@@ -275,6 +294,11 @@ class NeuralNetwork:
         for edge in self.edges:
             output = output + edge.getString()
         return output
+
+    def areConnected(self, nodeIndex1, nodeIndex2):
+        if 
+        for edge1 in self.connectionsFrom[nodeIndex1]:
+            for edge2 in self.
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)
