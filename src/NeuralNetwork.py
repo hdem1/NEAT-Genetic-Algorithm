@@ -400,3 +400,19 @@ class NeuralNetwork:
         c4 = 0.1
         output = c1*disjoint + c2*excess + c3*avgWeightDif + c4*avgBiasDif
         return output
+    
+    #Sorting:
+    def __lt__(self, obj):
+        return ((self.fitness) < (obj.fitness))
+  
+    def __gt__(self, obj):
+        return ((self.fitness) > (obj.fitness))
+  
+    def __le__(self, obj):
+        return ((self.fitness) <= (obj.fitness))
+  
+    def __ge__(self, obj):
+        return ((self.fitness) >= (obj.fitness))
+  
+    def __eq__(self, obj):
+        return (self.fitness == obj.fitness)
