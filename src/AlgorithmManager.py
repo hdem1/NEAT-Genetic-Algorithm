@@ -13,16 +13,14 @@ class AlgorithmManager:
 
     def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)
-        self.population = Population(env, len(self.obsRanges), len(self.actionRanges), numChildren)
+        self.actionRanges = self.envHandler.getActionRanges()
+        self.obsRanges = self.envHandler.getObservationRanges()
+        self.population = Population(env, len(self.obsRanges), len(self.actionRanges), numChildren, survivalRate=survivalRate)
         self.numGenerations = numGenerations
         self.numChildren = numChildren
         self.numTestsPerChild = numTestsPerChild
-        self.actionRanges = self.envHandler.getActionRanges()
-        self.obsRanges = self.envHandler.getObservationRanges()
         self.survivalRate = survivalRate
         self.numGenerationsDone = 0
-        self.currentGeneration = []
-        self.species = []
         self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
         self.id = id
@@ -39,53 +37,53 @@ class AlgorithmManager:
             newNN = NeuralNetwork.randomBaseNetwork(len(self.obsRanges), len(self.actionRanges))
             self.currentGeneration.append(newNN)
     
-    def makeNewGeneration(self):
-        newGeneration =  []
-        mutationsPerPrev = round((self.numChildren - len(self.bestSet)) * self.mutationRatio / len(self.bestSet))
-        combinations = round(self.numChildren - len(self.bestSet) * self.combinationRatio)
-        randoms = self.numChildren - len(self.bestSet) * (1+mutationsPerPrev) - combinations
-        for NN in self.bestSet:
-            #print(NN.getWeights())
-            newGeneration.append(NN)
-            for i in range(mutationsPerPrev):
-                #print(NN.getWeights())
-                newNN = NeuralNetwork()
-                newNN.setWeightsAndBiases(NN.getWeights(), NN.getBiases(), NN.getActFuncts())
-                newNN.insertMutations(mutationRate = (i+1)/mutationsPerPrev/4) #1 -> 1/2 -> 1/4
-                #print(newNN.getWeights())
-                newGeneration.append(newNN)
-            #print("--------")
-        for i in range(combinations):
-            index1 = int(np.floor(random.random() * len(self.bestSet)))
-            index2 =int(np.floor(random.random() * len(self.bestSet)))
-            while index2 == index1 and len(self.bestSet) != 1:
-                index2 = int(np.floor(random.random() * len(self.bestSet)))
-            newNN = NeuralNetwork()
-            newNN.makeCombination(self.startingLayerSizes, [self.bestSet[index1], self.bestSet[index2]])
-            newNN.insertMutations(mutationRate = 0.05)
-            newGeneration.append(newNN)
-        for i in range(randoms):
-            newNN = NeuralNetwork()
-            newNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
-            newGeneration.append(newNN)
-        return newGeneration
+    # def makeNewGeneration(self):
+    #     newGeneration =  []
+    #     mutationsPerPrev = round((self.numChildren - len(self.bestSet)) * self.mutationRatio / len(self.bestSet))
+    #     combinations = round(self.numChildren - len(self.bestSet) * self.combinationRatio)
+    #     randoms = self.numChildren - len(self.bestSet) * (1+mutationsPerPrev) - combinations
+    #     for NN in self.bestSet:
+    #         #print(NN.getWeights())
+    #         newGeneration.append(NN)
+    #         for i in range(mutationsPerPrev):
+    #             #print(NN.getWeights())
+    #             newNN = NeuralNetwork()
+    #             newNN.setWeightsAndBiases(NN.getWeights(), NN.getBiases(), NN.getActFuncts())
+    #             newNN.insertMutations(mutationRate = (i+1)/mutationsPerPrev/4) #1 -> 1/2 -> 1/4
+    #             #print(newNN.getWeights())
+    #             newGeneration.append(newNN)
+    #         #print("--------")
+    #     for i in range(combinations):
+    #         index1 = int(np.floor(random.random() * len(self.bestSet)))
+    #         index2 =int(np.floor(random.random() * len(self.bestSet)))
+    #         while index2 == index1 and len(self.bestSet) != 1:
+    #             index2 = int(np.floor(random.random() * len(self.bestSet)))
+    #         newNN = NeuralNetwork()
+    #         newNN.makeCombination(self.startingLayerSizes, [self.bestSet[index1], self.bestSet[index2]])
+    #         newNN.insertMutations(mutationRate = 0.05)
+    #         newGeneration.append(newNN)
+    #     for i in range(randoms):
+    #         newNN = NeuralNetwork()
+    #         newNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
+    #         newGeneration.append(newNN)
+    #     return newGeneration
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
         if printProgress:
             print("Progress: [", end ="", flush = True)
             lastPrint = 0
-        newGeneration = self.makeNewGeneration()
-        rewards = []
-        for i in range(self.numChildren):
+        self.population.evolveGeneration()
+        for i in range(self.population.size):
             if printProgress and i - lastPrint >= 0.1 * self.numChildren:
                 lastPrint = i
                 print("*",end = "", flush = True)
-            rewards.append(self.envHandler.runMultipleSimulations(self.numTestsPerChild, newGeneration[i], modifyReward=modifyReward))#, displaying = True))
+            reward = self.envHandler.runMultipleSimulations(self.numTestsPerChild, self.population.getNeuralNetwork(i), modifyReward=modifyReward))#, displaying = True))
+            self.population.setFitness(i,reward)
             #print(rewards[i])
         if printProgress:
             print("]")
 
-        bestRewards = []
+        '''bestRewards = []
         for i in range(int(np.ceil((self.numChildren * self.survivalRate)))):
             maxReward = MININT
             maxIndex = 0
@@ -94,11 +92,12 @@ class AlgorithmManager:
                     maxReward = rewards[j]
                     maxIndex = j
             self.bestSet[i] = newGeneration.pop(maxIndex)
-            bestRewards.append(rewards.pop(maxIndex))
+            bestRewards.append(rewards.pop(maxIndex))'''
         if printProgress:
-            print("Best Rewards =",bestRewards)
+            print("Average Reward =", self.population.getPopulationAverageFitness())
+            print("Best Reward =", self.population.getBestModel().fitness)
         
-    def train(self, printProgress = True, displayBest = True, numDisplayIterations = 2, saveOldModel = True, savePerGen = True, endTests = 100, modifyReward = False):
+    def train(self, printProgress = True, displayBest = True, numDisplayIterations = 2, saveOldModel = True, saveBestModelPerGen = True, saveEachGeneration = True, endTests = 100, modifyReward = False):
         if saveOldModel == True and self.modelSaved:
             self.modelSaved = False
             self.folder, self.filename = self.makeNewModelFileName()
@@ -107,8 +106,10 @@ class AlgorithmManager:
             if printing:
                 print("\nGeneration ",(i+1),":", sep ="")
             self.simulateGeneration(printProgress = printing, modifyReward = modifyReward)
-            if savePerGen:
+            if saveBestModelPerGen:
                 self.saveBestModel(printInfo= False)
+            if saveEachGeneration:
+                self.saveGeneration()
             if displayBest:
                 self.envHandler.runMultipleSimulations(numDisplayIterations, self.bestSet[0], displaying=True)
         #Resorting the final set with more data:
@@ -173,14 +174,15 @@ class AlgorithmManager:
         file.write(self.bestSet[0].getModelString())
 
         file.close()
-
-    
     
     def startNewFile(self):
         self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
     
-    def loadGeneration(self, genNum):    
+    def loadGeneration(self, genNum):  
+
+    def saveGeneration(self):
+          
     
     def loadModel(self, filename):
         self.modelSaved = False

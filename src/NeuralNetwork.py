@@ -1,3 +1,4 @@
+from multiprocessing.dummy.connection import families
 from xmlrpc.client import MININT
 import numpy as np
 import copy
@@ -241,6 +242,11 @@ class NeuralNetwork:
         self.nodes[nodeIndex].enabled = False
         for outgoing in self.connectionsFrom[nodeIndex]:
             self.edges[outgoing].enabled = False
+        
+    def enableNode(self, nodeIndex):
+        self.nodes[nodeIndex].enabled = True
+        for outgoing in self.connectionsFrom[nodeIndex]:
+            self.edges[outgoing].enabled = True
 
     def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID):
         if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
@@ -273,6 +279,9 @@ class NeuralNetwork:
 
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
+    
+    def enableConnection(self, edgeIndex):
+        self.edges[edgeIndex].enabled = True
 
     #---------------------------------------------------
     #ACCESSORS:
@@ -295,7 +304,15 @@ class NeuralNetwork:
             output = output + edge.getString()
         return output
 
-    def areConnected(self, nodeIndex1, nodeIndex2):
+    def areConnected(self, nodeIndex1, nodeIndex2): #1 = active conection, 0 = no connection, -1 = disabled connection
+        edge = self.getEdge(nodeIndex1, nodeIndex2)
+        if edge == -1:
+            return 0
+        elif self.edges[edge].enabled == False:
+            return -1
+        return 1
+    
+    def getEdge(self,nodeIndex1, nodeIndex2):
         if self.nodes[nodeIndex1].layerLevel < self.nodes[nodeIndex2].layerLevel:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
@@ -305,8 +322,8 @@ class NeuralNetwork:
         for edge1 in self.connectionsFrom[firstIndex]:
             for edge2 in self.connectionsTo[secondIndex]:
                 if edge1 == edge2:
-                    return True
-        return False
+                    return edge1
+        return -1
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)

@@ -81,6 +81,7 @@ class Population:
                     edgeIndex = round(random.random() * newNN.getNumEdges())
                     newNN.disableNode(edgeIndex, edgeIndex)
                 self.NNs.append(newNN)
+        self.size = len(self.NNs)
 
     def makeSpeciesLists(self, NNs, difLimit):
         speciesLists = []
@@ -112,6 +113,21 @@ class Population:
         for NN in self.NNs:
             total += NN.fitness
         return total/len(self.NNs)
+    
+    def getBestModels(self, portion):
+        num = portion * self.size
+        indices = []
+        output =[]
+        for i in range(num):
+            bestIndex = 0
+            bestFitness = self.NNs[0]
+            for j in range(self.size):
+                if j not in indices and self.NNs[j].fitness > bestFitness:
+                    bestIndex = j
+                    bestFitness = self.NNs[j].fitness
+            output.append(self.NNs[bestIndex])
+            indices.append(bestIndex)
+        return output
     
     #MODIFIERS:
     def setFitness(self,index,fitness):
