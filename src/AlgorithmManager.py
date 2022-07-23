@@ -24,55 +24,24 @@ class AlgorithmManager:
         self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
         self.id = id
-        self.rootFolder = "/Users/henrydemarest/Documents/Random Coding Projects/MachineLearningExperiments/NEAT-Genetic-Algorithm/"
+        self.rootFolder = expanduser("~/Documents/Random Coding Projects/MachineLearningExperiments/NEAT-Genetic-Algorithm/")
+        self.bestModelFolder = "bestModels/"
+        self.trainingLogFolder = "trainingLogs/"
         if self.id == -1:
             self.id = 0
-            if isdir(self.rootFolder + env + "_" + self.id + "/"):
-                self.id += 1
-                while isdir(self.rootFolder + env + "_" + self.id + "/"):
-                    self.id+=1
-            mkdir(self.rootFolder + env + "_" + self.id + "/")
-
-        for i in range(numChildren):
-            newNN = NeuralNetwork.randomBaseNetwork(len(self.obsRanges), len(self.actionRanges))
-            self.currentGeneration.append(newNN)
-    
-    # def makeNewGeneration(self):
-    #     newGeneration =  []
-    #     mutationsPerPrev = round((self.numChildren - len(self.bestSet)) * self.mutationRatio / len(self.bestSet))
-    #     combinations = round(self.numChildren - len(self.bestSet) * self.combinationRatio)
-    #     randoms = self.numChildren - len(self.bestSet) * (1+mutationsPerPrev) - combinations
-    #     for NN in self.bestSet:
-    #         #print(NN.getWeights())
-    #         newGeneration.append(NN)
-    #         for i in range(mutationsPerPrev):
-    #             #print(NN.getWeights())
-    #             newNN = NeuralNetwork()
-    #             newNN.setWeightsAndBiases(NN.getWeights(), NN.getBiases(), NN.getActFuncts())
-    #             newNN.insertMutations(mutationRate = (i+1)/mutationsPerPrev/4) #1 -> 1/2 -> 1/4
-    #             #print(newNN.getWeights())
-    #             newGeneration.append(newNN)
-    #         #print("--------")
-    #     for i in range(combinations):
-    #         index1 = int(np.floor(random.random() * len(self.bestSet)))
-    #         index2 =int(np.floor(random.random() * len(self.bestSet)))
-    #         while index2 == index1 and len(self.bestSet) != 1:
-    #             index2 = int(np.floor(random.random() * len(self.bestSet)))
-    #         newNN = NeuralNetwork()
-    #         newNN.makeCombination(self.startingLayerSizes, [self.bestSet[index1], self.bestSet[index2]])
-    #         newNN.insertMutations(mutationRate = 0.05)
-    #         newGeneration.append(newNN)
-    #     for i in range(randoms):
-    #         newNN = NeuralNetwork()
-    #         newNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
-    #         newGeneration.append(newNN)
-    #     return newGeneration
+            while isdir(self.rootFolder + self.trainingLogFolder + env + "_" + self.id + "/"):
+                self.id+=1
+            mkdir(self.rootFolder + self.trainingLogFolder + env + "_" + self.id + "/")
+        self.bestModelFilename = env + "_" + self.id + ".txt"
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
         if printProgress:
             print("Progress: [", end ="", flush = True)
             lastPrint = 0
-        self.population.evolveGeneration()
+        if self.numGenerationsDone == 0:
+            self.population.makeInitialPopulation()
+        else:
+            self.population.evolveGeneration()
         for i in range(self.population.size):
             if printProgress and i - lastPrint >= 0.1 * self.numChildren:
                 lastPrint = i
@@ -82,17 +51,7 @@ class AlgorithmManager:
             #print(rewards[i])
         if printProgress:
             print("]")
-
-        '''bestRewards = []
-        for i in range(int(np.ceil((self.numChildren * self.survivalRate)))):
-            maxReward = MININT
-            maxIndex = 0
-            for j in range(self.numChildren-i):
-                if rewards[j] > maxReward:
-                    maxReward = rewards[j]
-                    maxIndex = j
-            self.bestSet[i] = newGeneration.pop(maxIndex)
-            bestRewards.append(rewards.pop(maxIndex))'''
+        self.numGenerationsDone += 1
         if printProgress:
             print("Average Reward =", self.population.getPopulationAverageFitness())
             print("Best Reward =", self.population.getBestModel().fitness)
@@ -115,7 +74,8 @@ class AlgorithmManager:
         #Resorting the final set with more data:
         print("\nSorting Best Networks...")
         rewards = []
-        for NN in self.bestSet:
+        bestSet = self.population.getBestModels(0.1)
+        for NN in bestSet:
             rewards.append(self.envHandler.runMultipleSimulations(endTests, NN))
         newBestSet = []
         num = len(self.bestSet)
@@ -133,7 +93,7 @@ class AlgorithmManager:
     def testBest(self, iterations, saving = True):
         avg_reward = 0
         print("\nTesting for", iterations, "iterations...")
-        avg_reward, avg_iterations = self.envHandler.runMultipleSimulations(iterations, self.bestSet[0], returnIterations = True)
+        avg_reward, avg_iterations = self.envHandler.runMultipleSimulations(iterations, self.population.getBestModel(), returnIterations = True)
         print("\nTest Results:")
         indent = "   "
         print(indent, "- Average Reward = ", avg_reward)
@@ -149,22 +109,16 @@ class AlgorithmManager:
             i += 1
 
     def makeNewModelFileName(self):
-        folder = expanduser("~/Documents/Random Coding Projects/MachineLearningExperiments/OpenAI-Gym-Genetic-Algorithm/Saved Models/")
-        filename = self.envHandler.getEnvironmentName()
-        filename = filename + "_gens-" + str(self.numGenerations)
-        filename = filename + "_children-"+str(self.numChildren) 
-        filename = filename + "_layers-" + str(self.startingLayerSizes)
-        filename = filename + "_networkTests-"+str(self.numTestsPerChild)
-        if exists(folder + filename + ".txt"):
+        filename = self.envHandler.environmentName + "_" + self.id
+        if exists(self.rootFolder + self.bestModelFolder + filename + ".txt"):
             value = 1
-            while (exists(folder +filename + "_"+str(value))):
+            while (exists(self.rootFolder + self.bestModelFolder + filename + "_" + str(value) + ".txt")):
                 value+=1
             filename = filename + "_" + str(value)
-        filename = filename +".txt"
-        return folder,filename
+        self.bestModelFilename = filename +".txt"
     
     def saveBestModel(self, printInfo = True):
-        file = open(self.folder+self.filename, "w")
+        file = open(self.rootFolder+self.bestModelFolder+self.filename, "w")
         if printInfo:
             print("Filename =", self.filename)
 
@@ -182,7 +136,7 @@ class AlgorithmManager:
     def loadGeneration(self, genNum):  
 
     def saveGeneration(self):
-          
+
     
     def loadModel(self, filename):
         self.modelSaved = False
