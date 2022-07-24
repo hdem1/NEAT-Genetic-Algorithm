@@ -47,7 +47,7 @@ class AlgorithmManager:
             if printProgress and i - lastPrint >= 0.1 * self.numChildren:
                 lastPrint = i
                 print("*",end = "", flush = True)
-            reward = self.envHandler.runMultipleSimulations(self.numTestsPerChild, self.population.getNeuralNetwork(i), modifyReward=modifyReward))#, displaying = True))
+            reward = self.envHandler.runMultipleSimulations(self.numTestsPerChild, self.population.getNeuralNetwork(i), modifyReward=modifyReward)#, displaying = True))
             self.population.setFitness(i,reward)
             #print(rewards[i])
         if printProgress:
