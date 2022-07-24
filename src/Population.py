@@ -134,7 +134,7 @@ class Population:
         self.NNs[index].fitness = fitness
 
     #FILE READING/WRITING:
-    def savePopulation(self):
+    def getString(self):
         output = self.envName + ","
         output = output + str(len(self.NNs)) + ","
         output = output + str(self.survivalRate) + ","

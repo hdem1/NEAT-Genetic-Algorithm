@@ -31,7 +31,8 @@ class AlgorithmManager:
             self.id = 0
             while isdir(self.rootFolder + self.trainingLogFolder + env + "_" + self.id + "/"):
                 self.id+=1
-            mkdir(self.rootFolder + self.trainingLogFolder + env + "_" + self.id + "/")
+            self.trainingLogFolder = self.trainingLogFolder + env + "_" + self.id + "/"
+            mkdir(self.rootFolder + self.trainingLogFolder)
         self.bestModelFilename = env + "_" + self.id + ".txt"
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
@@ -134,8 +135,14 @@ class AlgorithmManager:
         self.modelSaved = False
     
     def loadGeneration(self, genNum):  
+        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + genNum + ".txt", "r")
+        self.population = Population.loadPopulation(file.readLines())
+        file.close()
 
     def saveGeneration(self):
+        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + self.numGenerationsDone + ".txt", "w")
+        file.write(self.population.getString())
+        file.close()
 
     
     def loadModel(self, filename):
