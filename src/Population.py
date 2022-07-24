@@ -105,6 +105,9 @@ class Population:
                 bestNN = NN
         return bestNN
     
+    def getSize(self):
+        return len(self.NNs)
+    
     def getNeuralNetwork(self, index):
         return self.NNs[index]
 

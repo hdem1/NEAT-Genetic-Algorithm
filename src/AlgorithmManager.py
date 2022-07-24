@@ -152,23 +152,21 @@ class AlgorithmManager:
         lines = file.readlines()
         NN = NeuralNetwork()
         NN.makeModelFromStrings(lines)
-        self.bestSet[0] = NN
-        self.startingLayerSizes = self.bestSet[0].getLayerSizes()
-        for i in range(1,len(self.bestSet)):
-            randomNN = NeuralNetwork()
-            randomNN.makeRandomNeuralNetwork(self.startingLayerSizes, self.activationFunctions)
-            self.bestSet[i] = randomNN
+        self.population = Population(self.envHandler.environmentName, len(self.obsRanges), len(self.actionRanges), self.population.getSize(), survivalRate=self.survivalRate)
+        self.population.NNs[0] = NN
     
     def savePerformance(self, reward, iterations, printInfo = True):
         #All following lines = training performances
-        if printInfo:   
-            print("Saving performance statistics...")
-        file = open(self.folder + self.filename, "a")
-        lastline = []
-        lastline.append(str(reward)+",")
-        lastline.append(str(iterations)+"\n")
-        file.writelines(lastline)
-        file.close()
+        if exists(self.rootFolder + self.bestModelFolder + self.bestModelFilename):
+            if printInfo:   
+                print("Saving performance statistics...")
+            file = open(self.folder + self.filename, "a")
+            lastline = []
+            lastline.append(str(reward)+",")
+            lastline.append(str(iterations)+"\n")
+            file.writelines(lastline)
+            file.close()
+
 
     def close(self):
         self.envHandler.closeEnvironment()
