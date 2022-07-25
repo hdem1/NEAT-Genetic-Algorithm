@@ -36,6 +36,12 @@ class AlgorithmManager:
                 self.id+=1
             self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
             mkdir(self.rootFolder + self.trainingLogFolder)
+        elif isdir(self.rootFolder + self.trainingLogFolder + env + "_" + str(self.id) + "/"):
+            self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
+            self.loadGeneration(-1)
+        else:
+            self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
+            mkdir(self.rootFolder + self.trainingLogFolder)
         self.bestModelFilename = env + "_" + str(self.id) + ".txt"
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
@@ -139,6 +145,9 @@ class AlgorithmManager:
         self.modelSaved = False
     
     def loadGeneration(self, genNum):  
+        if genNum == -1: #get last generation:
+            while exists(self.rootFolder + self.trainingLogFolder + "generation_" + str(genNum+1) + ".txt"):
+                genNum += 1
         file = open(self.rootFolder + self.trainingLogFolder + "generation_" + str(genNum) + ".txt", "r")
         self.population = Population.loadPopulation(file.readLines())
         file.close()
