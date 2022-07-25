@@ -1,4 +1,5 @@
 from multiprocessing.dummy.connection import families
+import random
 from xmlrpc.client import MAXINT, MININT
 import numpy as np
 import copy
@@ -340,6 +341,16 @@ class NeuralNetwork:
     
     def enableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = True
+    
+    def mutateValues(self, mutationOdds, biasMagnitude = 2, weightMagnitude = 3, scaleMagnitude = 0):
+        for i in range(len(self.nodes)):
+            if random.random() < mutationOdds:
+                self.nodes[i].bias = (1-2*random.random()) * biasMagnitude
+            if random.random() < mutationOdds:
+                self.nodes[i].scale = (1-2*random.random()) * scaleMagnitude
+        for i in range(len(self.edges)):
+            if random.random() < mutationOdds:
+                self.edges[i].weight = (1-2*random.random()) * weightMagnitude
 
     #---------------------------------------------------
     #ACCESSORS:

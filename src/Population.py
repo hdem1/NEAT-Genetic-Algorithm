@@ -28,7 +28,7 @@ class Population:
     
     #EVOLUTION:
     def evolveGeneration(self):
-        speciesLists = self.makeSpeciesLists(self.NNs, 1)
+        speciesLists = self.makeSpeciesLists(self.NNs)
         avgFitness = self.getPopulationAverageFitness()
         self.NNs = []
         for species in speciesLists:
@@ -83,9 +83,11 @@ class Population:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
                     newNN.disableConnection(edgeIndex)
                 self.NNs.append(newNN)
+                #Value Mutations:
+                newNN.mutateValues(0.1)
         self.size = len(self.NNs)
 
-    def makeSpeciesLists(self, NNs, difLimit):
+    def makeSpeciesLists(self, NNs, difLimit = 1):
         speciesLists = []
         for NN in NNs:
             foundSpecies = False
