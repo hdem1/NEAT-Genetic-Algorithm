@@ -21,19 +21,22 @@ class AlgorithmManager:
         self.numTestsPerChild = numTestsPerChild
         self.survivalRate = survivalRate
         self.numGenerationsDone = 0
-        self.folder, self.filename = self.makeNewModelFileName()
         self.modelSaved = False
         self.id = id
         self.rootFolder = expanduser("~/Documents/Random Coding Projects/MachineLearningExperiments/NEAT-Genetic-Algorithm/")
-        self.bestModelFolder = "bestModels/"
-        self.trainingLogFolder = "trainingLogs/"
+        self.bestModelFolder = "bestModels/" + env + "/"
+        self.trainingLogFolder = "trainingLogs/" + env + "/"
+        if not isdir(self.rootFolder + self.trainingLogFolder):
+            mkdir(self.rootFolder+self.trainingLogFolder)
+        if not isdir(self.rootFolder + self.bestModelFolder):
+            mkdir(self.rootFolder+self.bestModelFolder)
         if self.id == -1:
             self.id = 0
-            while isdir(self.rootFolder + self.trainingLogFolder + env + "_" + self.id + "/"):
+            while isdir(self.rootFolder + self.trainingLogFolder + env + "_" + str(self.id) + "/"):
                 self.id+=1
-            self.trainingLogFolder = self.trainingLogFolder + env + "_" + self.id + "/"
+            self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
             mkdir(self.rootFolder + self.trainingLogFolder)
-        self.bestModelFilename = env + "_" + self.id + ".txt"
+        self.bestModelFilename = env + "_" + str(self.id) + ".txt"
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
         if printProgress:
@@ -60,7 +63,7 @@ class AlgorithmManager:
     def train(self, printProgress = True, displayBest = True, numDisplayIterations = 2, saveOldModel = True, saveBestModelPerGen = True, saveEachGeneration = True, endTests = 100, modifyReward = False):
         if saveOldModel == True and self.modelSaved:
             self.modelSaved = False
-            self.folder, self.filename = self.makeNewModelFileName()
+            self.filename = self.makeNewModelFileName()
         printing = printProgress
         for i in range(self.numGenerations):
             if printing:
@@ -71,7 +74,7 @@ class AlgorithmManager:
             if saveEachGeneration:
                 self.saveGeneration()
             if displayBest:
-                self.envHandler.runMultipleSimulations(numDisplayIterations, self.bestSet[0], displaying=True)
+                self.envHandler.runMultipleSimulations(numDisplayIterations, self.population.getBestModel(), displaying=True)
         #Resorting the final set with more data:
         print("\nSorting Best Networks...")
         rewards = []
@@ -110,7 +113,7 @@ class AlgorithmManager:
             i += 1
 
     def makeNewModelFileName(self):
-        filename = self.envHandler.environmentName + "_" + self.id
+        filename = self.envHandler.environmentName + "_" + str(self.id)
         if exists(self.rootFolder + self.bestModelFolder + filename + ".txt"):
             value = 1
             while (exists(self.rootFolder + self.bestModelFolder + filename + "_" + str(value) + ".txt")):
@@ -119,28 +122,29 @@ class AlgorithmManager:
         self.bestModelFilename = filename +".txt"
     
     def saveBestModel(self, printInfo = True):
-        file = open(self.rootFolder+self.bestModelFolder+self.filename, "w")
+        self.makeNewModelFileName()
+        file = open(self.rootFolder+self.bestModelFolder+self.bestModelFilename, "w")
         if printInfo:
             print("Filename =", self.filename)
 
         #Writing data:
         if printInfo:
             print("Saving neural network...")
-        file.write(self.bestSet[0].getModelString())
+        file.write(self.population.getBestModel().getNetworkString())
 
         file.close()
     
     def startNewFile(self):
-        self.folder, self.filename = self.makeNewModelFileName()
+        self.bestModelFilename = self.makeNewModelFileName()
         self.modelSaved = False
     
     def loadGeneration(self, genNum):  
-        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + genNum + ".txt", "r")
+        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + str(genNum) + ".txt", "r")
         self.population = Population.loadPopulation(file.readLines())
         file.close()
 
     def saveGeneration(self):
-        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + self.numGenerationsDone + ".txt", "w")
+        file = open(self.rootFolder + self.trainingLogFolder + "generation_" + str(self.numGenerationsDone) + ".txt", "w")
         file.write(self.population.getString())
         file.close()
 

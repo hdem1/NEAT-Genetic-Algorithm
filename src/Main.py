@@ -2,6 +2,10 @@ from NeuralNetwork import NeuralNetwork
 from AlgorithmManager import AlgorithmManager
 
 
+algoManager = AlgorithmManager("CartPole-v1", 20, 1000)
+algoManager.train()
+
+'''
 algorithms = ["LL"]
 # C = cartpole
 # A = acrobot
@@ -16,10 +20,7 @@ loading = False
 displaying = True
 modifyingReward = False
 
-algoManager = AlgorithmManager("CartPole-v1", 20, 1000)
-algoManager.train()
-
-'''for algorithm in algorithms:
+for algorithm in algorithms:
     genAlgo = None
     if algorithm == "T":
         NN = NeuralNetwork.randomBaseNetwork(3,3)

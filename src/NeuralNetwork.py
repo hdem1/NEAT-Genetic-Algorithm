@@ -110,16 +110,16 @@ class NeuralNetwork:
         newNN.connectionsFrom = [ [] for _ in range(inputs+outputs)]
 
         #Setting input nodes:
-        newNN.nodes = [Node(newNN.identityActFunctionID, 0, 0,1, i) for i in range(inputs)]
+        newNN.nodes = [Node(newNN.identityActFunctionID, 0, 0, True, i) for i in range(inputs)]
         
         #Setting output nodes:
-        newNN.nodes = newNN.nodes + [Node(newNN.sigmoidActFunctionID,0,1,1,inputs+i) for i in range(outputs)]
+        newNN.nodes = newNN.nodes + [Node(newNN.sigmoidActFunctionID,0,1,True,inputs+i) for i in range(outputs)]
 
         #Creating edges:
         edgeCount = 0
         for origin in range(inputs):
             for dest in range(inputs, inputs + outputs):
-                newNN.edges.append(Edge(origin, dest, (1- 2* np.random.random()) * 3, 1, origin * outputs + dest))
+                newNN.edges.append(Edge(origin, dest, (1- 2* np.random.random()) * 3, True, origin * outputs + (dest-inputs)))
                 newNN.connectionsTo[dest].append(edgeCount)
                 newNN.connectionsFrom[origin].append(edgeCount)
                 edgeCount +=1
@@ -129,6 +129,9 @@ class NeuralNetwork:
     @classmethod
     def childFromParents(cls, parent1, parent2):
         newNN = cls()
+
+        newNN.inputs = parent1.inputs
+        newNN.outputs = parent1.outputs
 
         #Combining nodes
         index1 = 0
@@ -169,7 +172,7 @@ class NeuralNetwork:
                 newNN.edges.append(Edge(parent2.edges[index2].getString()))
                 index2 += 1
             else:
-                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 1000
+                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
                 if np.random.random() < threshold:
                     newNN.edges.append(Edge(parent1.edges[index1].getString()))
                 else:
@@ -179,7 +182,6 @@ class NeuralNetwork:
             newNN.connectionsTo[newNN.edges[-1].dest].append(edgeCount)
             newNN.connectionsFrom[newNN.edges[-1].origin].append(edgeCount)
             edgeCount += 1
-
         return newNN
 
     @classmethod
@@ -303,16 +305,8 @@ class NeuralNetwork:
         for edge in self.edges:
             output = output + edge.getString()
         return output
-
-    def areConnected(self, nodeIndex1, nodeIndex2): #1 = active conection, 0 = no connection, -1 = disabled connection
-        edge = self.getEdge(nodeIndex1, nodeIndex2)
-        if edge == -1:
-            return 0
-        elif self.edges[edge].enabled == False:
-            return -1
-        return 1
     
-    def getEdge(self,nodeIndex1, nodeIndex2):
+    def getEdgeFromNodes(self, nodeIndex1, nodeIndex2):
         if self.nodes[nodeIndex1].layerLevel < self.nodes[nodeIndex2].layerLevel:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
@@ -324,6 +318,14 @@ class NeuralNetwork:
                 if edge1 == edge2:
                     return edge1
         return -1
+
+    def areConnected(self, nodeIndex1, nodeIndex2): #1 = active conection, 0 = no connection, -1 = disabled connection
+        e = self.getEdgeFromNodes(nodeIndex1, nodeIndex2)
+        if e == -1:
+            return 0
+        elif self.edges[e].enabled == False:
+            return -1
+        return 1
 
     def getNodes(self):
         return copy.deepcopy(self.nodes)

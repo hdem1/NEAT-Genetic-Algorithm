@@ -1,4 +1,4 @@
-from math import ceil
+from math import ceil, floor
 from xmlrpc.client import MININT
 import numpy as np
 from NeuralNetwork import NeuralNetwork
@@ -50,36 +50,36 @@ class Population:
                 parent1 = species[round(random.random() * maxIndex)]
                 parent2 = species[round(random.random() * maxIndex)]
                 #Make NN:
-                newNN = NeuralNetwork.childFromParents(species[parent1], species[parent2])
+                newNN = NeuralNetwork.childFromParents(parent1, parent2)
                 #Mutate NN:
                 #To-DO:
                 #   Could add functionality to catch double additions and make them the same history values
                 #   Could add functionality to turn on disabled nodes/edges
                 #Adding nodes:
                 while random.random() < self.addNodeRate:
-                    edgeIndex = round(random.random() * newNN.getNumEdges())
+                    edgeIndex = floor(random.random() * newNN.getNumEdges())
                     newNN.insertNode(edgeIndex, self.latestConnectionID+1, self.latestNodeID+1)
                     self.latestConnectionID += 2
                     self.latestNodeID += 1
                 #Disabling nodes:
                 while random.random() < self.disableNodeRate:
-                    nodeIndex = round(random.random() * newNN.getNumNodes())
-                    newNN.disableNode(edgeIndex, nodeIndex)
+                    nodeIndex = floor(random.random() * newNN.getNumNodes())
+                    newNN.disableNode(nodeIndex)
                 #Adding Connections:
                 while random.random() < self.addConnectionRate:
-                    node1 = round(random.random() * newNN.getNumNodes())
-                    node2 = round(random.random() * newNN.getNumNodes())
+                    node1 = floor(random.random() * newNN.getNumNodes())
+                    node2 = floor(random.random() * newNN.getNumNodes())
                     while (node1 != node2 and newNN.areConnected(node1,node2) != 1):
-                        node2 = round(random.random() * newNN.getNumNodes())
+                        node2 = floor(random.random() * newNN.getNumNodes())
                     if newNN.areConnected(node1,node2) == 0:
                         newNN.insertConnection(node1, node2, self.latestConnectionID+1)
                     else:
-                        newNN.enableConnection(newNN.getEdge(node1,node2))
+                        newNN.enableConnection(newNN.getEdgeFromNodes(node1,node2))
                     self.latestConnectionID += 1
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
-                    edgeIndex = round(random.random() * newNN.getNumEdges())
-                    newNN.disableNode(edgeIndex, edgeIndex)
+                    edgeIndex = floor(random.random() * newNN.getNumEdges())
+                    newNN.disableConnection(edgeIndex)
                 self.NNs.append(newNN)
         self.size = len(self.NNs)
 
@@ -151,6 +151,7 @@ class Population:
         output = output + str(self.latestConnectionID) + "\n"
         for NN in self.NNs:
             output = output + NN.getNetworkString()
+        return output
     
     @classmethod
     def loadPopulation(cls, lines):
