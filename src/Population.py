@@ -69,7 +69,9 @@ class Population:
                 while random.random() < self.addConnectionRate:
                     node1 = floor(random.random() * newNN.getNumNodes())
                     node2 = floor(random.random() * newNN.getNumNodes())
-                    while (node1 != node2 and newNN.areConnected(node1,node2) != 1):
+                    searchedOptions = 0
+                    while (node1 != node2 and newNN.areConnected(node1,node2) != 1 and searchedOptions < 100):
+                        node1 = floor(random.random() * newNN.getNumNodes())
                         node2 = floor(random.random() * newNN.getNumNodes())
                     if newNN.areConnected(node1,node2) == 0:
                         newNN.insertConnection(node1, node2, self.latestConnectionID+1)
