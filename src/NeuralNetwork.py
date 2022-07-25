@@ -1,5 +1,5 @@
 from multiprocessing.dummy.connection import families
-from xmlrpc.client import MININT
+from xmlrpc.client import MAXINT, MININT
 import numpy as np
 import copy
 
@@ -95,6 +95,8 @@ class NeuralNetwork:
         self.visited = []
         # For performance monitoring:
         self.fitness = MININT
+        self.activeConnections = 0
+        self.activeNodes = 0
 
     @classmethod
     def randomBaseNetwork(cls, inputs, outputs):
@@ -123,7 +125,8 @@ class NeuralNetwork:
                 newNN.connectionsTo[dest].append(edgeCount)
                 newNN.connectionsFrom[origin].append(edgeCount)
                 edgeCount +=1
-
+        newNN.activeConnections = len(newNN.edges)
+        newNN.activeNodes = len(newNN.nodes)
         return newNN
 
     @classmethod
@@ -136,9 +139,16 @@ class NeuralNetwork:
         #Combining nodes
         index1 = 0
         index2 = 0
-        while index1 < len(parent1.nodes) and index2 < len(parent2.nodes):
-            history1 = parent1.nodes[index1].historyValue
-            history2 = parent2.nodes[index2].historyValue
+        while index1 < len(parent1.nodes) or index2 < len(parent2.nodes):
+            if index1 < len(parent1.nodes):
+                history1 = parent1.nodes[index1].historyValue
+            else:
+                history1 = MAXINT
+            if index2 < len(parent2.nodes):
+                history2 = parent2.nodes[index2].historyValue
+            else:
+                history2 = MAXINT
+
             if history1 < history2:
                 newNN.nodes.append(Node(parent1.nodes[index1].getString()))
                 index1 += 1
@@ -146,15 +156,18 @@ class NeuralNetwork:
                 newNN.nodes.append(Node(parent2.nodes[index2].getString()))
                 index2 += 1
             else:
-                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 1000
+                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
                 if np.random.random() < threshold:
                     newNN.nodes.append(Node(parent1.nodes[index1].getString()))
                 else:
                     newNN.nodes.append(Node(parent2.nodes[index2].getString()))
                 index1 += 1
                 index2 += 1
-        
+            if newNN.nodes[-1].enabled:
+                newNN.activeNodes += 1
+
         #Creating connection matrices:
+        #print("Num Nodes: " + str(len(parent1.nodes)) + "+" + str(len(parent2.nodes)) + " --> " + str(len(newNN.nodes)))
         newNN.connectionsTo = [ [] for _ in range(len(newNN.nodes))]
         newNN.connectionsFrom = [ [] for _ in range(len(newNN.nodes))]
                 
@@ -162,26 +175,56 @@ class NeuralNetwork:
         index1 = 0
         index2 = 0
         edgeCount = 0
-        while index1 < len(parent1.edges) and index2 < len(parent2.edges):
-            history1 = parent1.edges[index1].historyValue
-            history2 = parent2.edges[index2].historyValue
+        while index1 < len(parent1.edges) or index2 < len(parent2.edges):
+            if index1 < len(parent1.edges):
+                history1 = parent1.edges[index1].historyValue
+            else:
+                history1 = MAXINT
+            if index2 < len(parent2.edges):
+                history2 = parent2.edges[index2].historyValue
+            else:
+                history2 = MAXINT
+
             if history1 < history2:
-                newNN.edges.append(Edge(parent1.edges[index1].getString()))
+                newEdge = parent1.edges[index1]
+                originHistory = parent1.nodes[newEdge.origin].historyValue
+                destHistory = parent1.nodes[newEdge.dest].historyValue
                 index1 += 1
             elif history2 < history1:
-                newNN.edges.append(Edge(parent2.edges[index2].getString()))
+                newEdge = parent2.edges[index2]
+                originHistory = parent2.nodes[newEdge.origin].historyValue
+                destHistory = parent2.nodes[newEdge.dest].historyValue
                 index2 += 1
             else:
                 threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
                 if np.random.random() < threshold:
-                    newNN.edges.append(Edge(parent1.edges[index1].getString()))
+                    newEdge = parent1.edges[index1]
+                    originHistory = parent1.nodes[newEdge.origin].historyValue
+                    destHistory = parent1.nodes[newEdge.dest].historyValue
                 else:
-                    newNN.edges.append(Edge(parent2.edges[index2].getString()))
+                    newEdge = parent2.edges[index2]
+                    originHistory = parent2.nodes[newEdge.origin].historyValue
+                    destHistory = parent2.nodes[newEdge.dest].historyValue
                 index1 += 1
                 index2 += 1
-            newNN.connectionsTo[newNN.edges[-1].dest].append(edgeCount)
-            newNN.connectionsFrom[newNN.edges[-1].origin].append(edgeCount)
+
+            newOriginIndex = 0
+            while originHistory != newNN.nodes[newOriginIndex].historyValue:
+                newOriginIndex += 1
+            newDestIndex = 0
+            while destHistory != newNN.nodes[newDestIndex].historyValue:
+                newDestIndex += 1
+
+            print(str(newEdge.origin) + "," + str(newEdge.dest) + " --> " + str(newOriginIndex) + "," + str(newDestIndex))
+            newEdge.origin = newOriginIndex
+            newEdge.dest = newDestIndex
+            newNN.edges.append(Edge(newEdge.getString()))
+            newNN.connectionsTo[newDestIndex].append(edgeCount)
+            newNN.connectionsFrom[newOriginIndex].append(edgeCount)
+            if newEdge.enabled:
+                newNN.activeConnections += 1
             edgeCount += 1
+
         return newNN
 
     @classmethod
@@ -196,6 +239,8 @@ class NeuralNetwork:
         #Define Nodes:
         for n in range(numNodes):
             newNN.nodes.append(Node(strings[n+1]))
+            if newNN.nodes[-1].enabled:
+                newNN.activeNodes += 1
         #Define connection arrays:
         newNN.connectionsTo = [ [] for _ in range(numNodes)]
         newNN.connectionsFrom = [ [] for _ in range(numNodes)]
@@ -205,6 +250,9 @@ class NeuralNetwork:
             newNN.edges.append(Edge(strings[numNodes+1+e]))
             newNN.connectionsFrom[newNN.edges[-1].origin].append(e)
             newNN.connectionsTo[newNN.edges[-1].dest].append(e)
+            if newNN.edges[-1].enabled:
+                newNN.activeConnections += 1
+
 
         return newNN
 
@@ -239,18 +287,26 @@ class NeuralNetwork:
             if self.distribution == "norm":
                 self.nodes[-1].bias = (1-2*np.random.normal()) * self.biasMagnitude
                 self.edges[-2].weight = (1-2*np.random.normal()) * self.weightMagnitude
+        self.activeNodes += 1
 
     def disableNode(self, nodeIndex):
         self.nodes[nodeIndex].enabled = False
         for outgoing in self.connectionsFrom[nodeIndex]:
             self.edges[outgoing].enabled = False
+            self.activeConnections -= 1
+        self.activeNodes -= 1
         
     def enableNode(self, nodeIndex):
         self.nodes[nodeIndex].enabled = True
         for outgoing in self.connectionsFrom[nodeIndex]:
             self.edges[outgoing].enabled = True
+            self.activeConnections += 1
+            #ISSUE = WILL REACTIVATE EDGES THAT WERE PREVIOUSLY DEACTIVATED
+        self.activeNodes += 1
 
     def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID):
+        if nodeIndex1 == nodeIndex2:
+            return
         if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
@@ -305,6 +361,22 @@ class NeuralNetwork:
         for edge in self.edges:
             output = output + edge.getString()
         return output
+    
+    def checkFullness(self):
+        self.full = True
+        for i in range(len(self.nodes)):
+            activeConnections = 0
+            for e in self.connectionsFrom[i]:
+                if e.enabled:
+                    activeConnections += 1  
+            for e in self.connectionsTo[i]:
+                if e.enabled:
+                    activeConnections += 1
+            if activeConnections != len(self.nodes) - 1:
+                self.full = False
+                break
+        
+        return self.full
     
     def getEdgeFromNodes(self, nodeIndex1, nodeIndex2):
         if self.nodes[nodeIndex1].layerLevel < self.nodes[nodeIndex2].layerLevel:
