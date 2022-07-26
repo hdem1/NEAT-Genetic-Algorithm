@@ -89,9 +89,9 @@ class Population:
                     if searchedOptions < 100:
                         if newNN.areConnected(node1,node2) == 0:
                             newNN.insertConnection(node1, node2, self.latestConnectionID+1)
+                            self.latestConnectionID += 1
                         else:
                             newNN.enableConnection(newNN.getEdgeFromNodes(node1,node2))
-                        self.latestConnectionID += 1
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
