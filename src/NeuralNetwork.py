@@ -99,6 +99,7 @@ class NeuralNetwork:
         self.fitness = MININT
         self.activeConnections = 0
         self.activeNodes = 0
+        self.testsRun = 0
 
     @classmethod
     def randomBaseNetwork(cls, inputs, outputs):
@@ -275,6 +276,7 @@ class NeuralNetwork:
         newNN.inputs = int(firstLine[2])
         newNN.outputs = int(firstLine[3])
         newNN.species = int(firstLine[4])
+        newNN.testsRun = int(firstLine[6])
         #Define Nodes:
         for n in range(numNodes):
             newNN.nodes.append(Node(strings[n+1]))
@@ -297,6 +299,10 @@ class NeuralNetwork:
 
     #---------------------------------------------------
     #MODIFIERS:
+    def changeFitness(self,fitness,tests):
+        self.fitness = (self.fitness * self.testsRun + fitness * tests) / (self.testsRun + tests)
+        self.testsRun += tests
+
     def insertNode(self, edgeIndex, firstEdgeID, newNodeID):
         edge = self.edges[edgeIndex]
         originNode = self.nodes[edge.origin]
@@ -421,7 +427,8 @@ class NeuralNetwork:
         output = output + str(self.inputs) + ","
         output = output + str(self.outputs) + ","
         output = output + str(self.species) + ","
-        output = output + str(self.fitness) + "\n"
+        output = output + str(self.fitness) + ","
+        output = output + str(self.testsRun) + "\n"
 
         #Nodes:
         for node in self.nodes:
@@ -486,6 +493,9 @@ class NeuralNetwork:
 
     def getNumNodes(self):
         return len(self.nodes)
+    
+    def getTestsRun(self):
+        return self.testsRun
     
     def edgeBoundaryError(self):
         for edge in self.edges:

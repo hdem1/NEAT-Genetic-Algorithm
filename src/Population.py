@@ -33,12 +33,15 @@ class Population:
         speciesLists = self.makeSpeciesLists(self.NNs)
         avgFitness = self.getPopulationAverageFitness()
         newPop = []
+        speciesNum = -1
         for species in speciesLists:
+            speciesNum += 1
             #self.printPopulationErrors(species, "Error Check 2")
             #Get the new number of NNs in that species:
             popTotalFitness = 0
             for NN in species:
                 popTotalFitness += NN.fitness
+                NN.species = speciesNum
             newNum = round(popTotalFitness/avgFitness)
             
             #Sort species into descending order:
@@ -80,18 +83,16 @@ class Population:
                     node1 = floor(random.random() * newNN.getNumNodes())
                     node2 = floor(random.random() * newNN.getNumNodes())
                     searchedOptions = 0
-                    while (node1 == node2 or newNN.areConnected(node1,node2) == 1 or (node1 < newNN.inputs and node2 < newNN.inputs)):
+                    goodPair = False
+                    while (not goodPair and searchedOptions < 100):
                         node1 = floor(random.random() * newNN.getNumNodes())
                         node2 = floor(random.random() * newNN.getNumNodes())
                         searchedOptions += 1
-                        if searchedOptions >= 100:
-                            break
-                    if searchedOptions < 100:
-                        if newNN.areConnected(node1,node2) == 0:
-                            newNN.insertConnection(node1, node2, self.latestConnectionID+1)
+                        val = newNN.insertConnection(node1,node2, self.latestConnectionID+1)
+                        if val >= 0:
+                            goodPair = True
+                        if val == 1:
                             self.latestConnectionID += 1
-                        else:
-                            newNN.enableConnection(newNN.getEdgeFromNodes(node1,node2))
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
@@ -164,8 +165,8 @@ class Population:
         return output, indices
     
     #MODIFIERS:
-    def setFitness(self,index,fitness):
-        self.NNs[index].fitness = fitness
+    def setFitness(self,index,fitness, tests):
+        self.NNs[index].changeFitness(fitness,tests)
 
     #FILE READING/WRITING:
     def getString(self):
