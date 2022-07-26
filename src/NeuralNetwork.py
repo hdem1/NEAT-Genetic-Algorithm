@@ -162,8 +162,7 @@ class NeuralNetwork:
                 newNN.nodes.append(Node(parent2.nodes[index2].getString()))
                 index2 += 1
             else:
-                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
-                if np.random.random() < threshold:
+                if parent1.fitness > parent2.fitness or (parent1.fitness == parent2.fitness and random.random() < 0.5):
                     newNN.nodes.append(Node(parent1.nodes[index1].getString()))
                 else:
                     newNN.nodes.append(Node(parent2.nodes[index2].getString()))
@@ -217,8 +216,7 @@ class NeuralNetwork:
                 destHistory = parent2.nodes[newEdge.dest].historyValue
                 index2 += 1
             else:
-                threshold = 0.5 + (parent2.fitness - parent1.fitness) / abs(parent2.fitness - parent1.fitness) / 2
-                if np.random.random() > threshold:
+                if parent1.fitness > parent2.fitness or (parent1.fitness == parent2.fitness and random.random() < 0.5):
                     newEdge = parent1.edges[index1]
                     if newEdge.dest >= len(parent1.nodes):
                         print(parent1.getNetworkString())
@@ -348,16 +346,25 @@ class NeuralNetwork:
             #ISSUE = WILL REACTIVATE EDGES THAT WERE PREVIOUSLY DEACTIVATED
         self.activeNodes += 1
 
-    def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID):
+    def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID): #Returns -1 if doesn't work, 0 if enabled previous connection, 1 if inserted new connection
         self.printErrors("ADDING CONNECTION START")
         if nodeIndex1 == nodeIndex2:
-            return
+            return -1
         if nodeIndex1 < 0 or nodeIndex1 >= len(self.nodes) or nodeIndex2 < 0 or nodeIndex2 >= len(self.nodes):
             print("NODE OUT OF BOUNDS")
-            return
-        if self.areConnected(nodeIndex1, nodeIndex2) != 0:
+            return -1
+        if nodeIndex1 < self.inputs and nodeIndex2 < self.inputs:
+            return -1
+        if nodeIndex1 >= self.inputs and nodeIndex1 < self.inputs + self.outputs and nodeIndex2 >= self.inputs and nodeIndex2 < self.inputs + self.outputs:
+            return -1
+        c = self.areConnected(nodeIndex1, nodeIndex2)
+        if c == 1:
             #print("ALREADY CONNECTED")
-            return
+            return -1
+        elif c == -1:
+            self.enableConnection(self.getEdgeFromNodes(nodeIndex1, nodeIndex2))
+            return 0
+
         if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
@@ -386,6 +393,7 @@ class NeuralNetwork:
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
         self.printErrors("ADDING CONNECTION END")
+        return 1
 
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
