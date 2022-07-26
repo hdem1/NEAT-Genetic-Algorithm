@@ -21,7 +21,7 @@ class EnvironmentHandler:
             for i in range(self.actionSpace.shape[0]):
                 output.append([self.actionSpace.low[index], self.actionSpace.high[index]])
         if type(self.actionSpace) == gym.spaces.discrete.Discrete:
-            return [[self.actionSpace.start, self.actionSpace.start + self.actionSpace.n - 1]]
+            return [[0,1] for _ in range(self.actionSpace.n)]#[self.actionSpace.start, self.actionSpace.start + self.actionSpace.n - 1]]
         return output
     
     def getObservationRanges(self):
@@ -46,7 +46,13 @@ class EnvironmentHandler:
             for i in range(len(output)):
                 action.append(output[i] * (actionRanges[i][1]-actionRanges[i][0]) + actionRanges[i][0])
             if type(self.actionSpace) == gym.spaces.discrete.Discrete:
-                action = int(np.round(action[0]))
+                choice = 0
+                maxVal = 0
+                for i in range(len(action)):
+                    if action[i] > maxVal:
+                        maxVal = action[i]
+                        choice = i
+                action = choice
             obs, reward, done, info = self.env.step(action)
             obsArray = np.array(obs, dtype = object).reshape(len(obs), 1)
             totalReward += reward 
