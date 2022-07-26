@@ -217,8 +217,8 @@ class NeuralNetwork:
                 destHistory = parent2.nodes[newEdge.dest].historyValue
                 index2 += 1
             else:
-                threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
-                if np.random.random() < threshold:
+                threshold = 0.5 + (parent2.fitness - parent1.fitness) / abs(parent2.fitness - parent1.fitness) / 2
+                if np.random.random() > threshold:
                     newEdge = parent1.edges[index1]
                     if newEdge.dest >= len(parent1.nodes):
                         print(parent1.getNetworkString())
@@ -543,6 +543,7 @@ class NeuralNetwork:
             print("EDGE DIRECTION ERROR")
         if error:
             print(self.getNetworkString())
+            exit()
 
 
     #---------------------------------------------------

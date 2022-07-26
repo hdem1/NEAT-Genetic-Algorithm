@@ -3,7 +3,7 @@ from AlgorithmManager import AlgorithmManager
 
 
 algoManager = AlgorithmManager("MountainCar-v0",1000)
-algoManager.train(20)
+algoManager.train(50)
 algoManager.testBest(1000)
 algoManager.displayBest()
 
