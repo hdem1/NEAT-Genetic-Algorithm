@@ -2,6 +2,7 @@ from os import environ
 import gym
 import numpy as np
 from NeuralNetwork import NeuralNetwork
+from FitnessCalculator import FitnessCalculator
 
 class EnvironmentHandler:
 
@@ -31,7 +32,7 @@ class EnvironmentHandler:
             output.append([self.observationSpace.low[index], self.observationSpace.high[index]])
         return output
 
-    def runSimulation(self, neuralNetwork:NeuralNetwork, maxIterations = -1, displaying = False, modifyReward = False):
+    def runSimulation(self, neuralNetwork:NeuralNetwork, maxIterations = -1, displaying = False, modifyReward = True):
         done = False
         obs = self.env.reset()
         
@@ -39,6 +40,7 @@ class EnvironmentHandler:
         iterations = 0
         totalReward = 0
         neuralNetwork.printErrors("Runtime check 1")
+        fitnessCalculator = FitnessCalculator(self.environmentName)
         while not done and (maxIterations == -1 or iterations <= maxIterations):
             output = neuralNetwork.getOutput(obsArray)
             action = []
@@ -56,23 +58,22 @@ class EnvironmentHandler:
             obs, reward, done, info = self.env.step(action)
             obsArray = np.array(obs, dtype = object).reshape(len(obs), 1)
             totalReward += reward 
-            if modifyReward and self.environmentName == "Pendulum-v1":
-                totalReward += ((1 - abs(obsArray[2][0])/8)**2) * obsArray[0][0] * 10
-            if modifyReward and self.environmentName == "LunarLander-v2":
-                totalReward += 3 - (obsArray[1][0] + 1.5)
+            fitnessCalculator.update([reward])
             if displaying:
                 self.env.render()
             iterations += 1
-        return totalReward, iterations
+        return totalReward, iterations, fitnessCalculator.getFitness()
     
-    def runMultipleSimulations(self, num_tests:int, neuralNetwork:NeuralNetwork, maxIterations = -1, displaying = False, successChecking = False, successRewardThreshold = 0, successIterationThreshold = -1, returnIterations = False, modifyReward = False):
+    def runMultipleSimulations(self, num_tests:int, neuralNetwork:NeuralNetwork, maxIterations = -1, displaying = False, successChecking = False, successRewardThreshold = 0, modifyReward = True, successIterationThreshold = -1):
         successRate = 0
         avg_reward = 0
         avg_iterations = 0
+        avg_fitness = 0
         for t in range(num_tests):
-            reward, iterations = self.runSimulation(neuralNetwork, maxIterations = maxIterations, displaying = displaying, modifyReward = modifyReward)
+            reward, iterations, fitness = self.runSimulation(neuralNetwork, maxIterations = maxIterations, displaying = displaying, modifyReward = modifyReward)
             avg_reward += reward
             avg_iterations += iterations
+            avg_fitness += fitness
             if successChecking:
                 if successIterationThreshold >= 0 and iterations >= successIterationThreshold:
                     successRate +=1
@@ -80,15 +81,11 @@ class EnvironmentHandler:
                     successRate +=1
         avg_reward /= num_tests
         avg_iterations /= num_tests
-        if successChecking and returnIterations:
+        avg_fitness /= num_tests
+        if successChecking:
             successRate /= num_tests
-            return avg_reward, avg_iterations, successRate
-        elif successChecking:
-            successRate /= num_tests
-            return avg_reward, successRate
-        elif returnIterations:
-            return avg_reward, avg_iterations
-        return avg_reward
+            return avg_reward, avg_iterations, avg_fitness, successRate
+        return avg_reward, avg_iterations, avg_fitness
             
     def getEnvironmentName(self):
         return self.environmentName
