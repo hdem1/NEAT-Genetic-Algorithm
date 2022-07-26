@@ -38,6 +38,7 @@ class EnvironmentHandler:
         obsArray = np.array(obs, dtype = object).reshape(len(obs),1)
         iterations = 0
         totalReward = 0
+        neuralNetwork.printErrors("Runtime check 1")
         while not done and (maxIterations == -1 or iterations <= maxIterations):
             output = neuralNetwork.getOutput(obsArray)
             action = []

@@ -2,17 +2,18 @@ from NeuralNetwork import NeuralNetwork
 from AlgorithmManager import AlgorithmManager
 
 
-algoManager = AlgorithmManager("CartPole-v1", 20, 1000)
-algoManager.train()
+algoManager = AlgorithmManager("MountainCar-v0",1000)
+algoManager.train(20)
+algoManager.testBest(1000)
+algoManager.displayBest()
 
-'''
-algorithms = ["LL"]
+
+'''algorithms = ["LL"]
 # C = cartpole
 # A = acrobot
 # P = pendulum
 # MC = mountain Car
 # MCC = mountain Car Continuous
-# T = testing:
 # LL = lunar lander
 # BW = Bipedal Walker
 training = False
@@ -21,13 +22,12 @@ displaying = True
 modifyingReward = False
 
 for algorithm in algorithms:
-    genAlgo = None
-    if algorithm == "T":
-        NN = NeuralNetwork.randomBaseNetwork(3,3)
-    elif algorithm == "C":
-        algoManager = AlgorithmManager("CartPole-v1", 10, 1000, hiddenLayerSizes=[3,3], activationFunctions= ["LR","LR"], numTestsPerChild=3)
+    algoManager = None
+    if algorithm == "C":
+        if not loading:
+            algoManager = AlgorithmManager("CartPole-v1", 1000)
         if loading:
-            algoManager.loadModel("CartPole-v1_gens-10_children-1000_layers-[4, 3, 3, 1]_networkTests-3.txt")
+            algoManager = AlgorithmManager("CartPole-v1", 1000, 0)
     elif algorithm == "A":
         algoManager = AlgorithmManager("Acrobot-v1", 10, 5000, hiddenLayerSizes=[5,5], activationFunctions= ["LR","LR"], numTestsPerChild=3)
         if loading:

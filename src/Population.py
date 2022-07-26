@@ -28,12 +28,14 @@ class Population:
     
     #EVOLUTION:
     def evolveGeneration(self):
+        #print("Error Check 1 = ", self.edgeErrors(self.NNs))
+        #self.printPopulationErrors(self.NNs, "Error Check 1")
         speciesLists = self.makeSpeciesLists(self.NNs)
         avgFitness = self.getPopulationAverageFitness()
-        self.NNs = []
+        newPop = []
         for species in speciesLists:
+            #self.printPopulationErrors(species, "Error Check 2")
             #Get the new number of NNs in that species:
-            speciesSize = len(species)
             popTotalFitness = 0
             for NN in species:
                 popTotalFitness += NN.fitness
@@ -46,11 +48,18 @@ class Population:
             maxIndex = int(ceil(len(species)*self.survivalRate))
 
             #Get the New generation from the species:
+            #self.printPopulationErrors(species, "Error Check 2.5")
             for i in range(newNum):
-                parent1 = species[round(random.random() * maxIndex)]
-                parent2 = species[round(random.random() * maxIndex)]
+                parent1 = species[floor(random.random() * maxIndex)]
+                parent2 = species[floor(random.random() * maxIndex)]
+                
+                #print(parent1.getNetworkString())
+                #print(parent2.getNetworkString())
                 #Make NN:
+                #print("Error Check 3 = ", self.edgeErrors([parent1, parent2]))
+                #self.printPopulationErrors([parent1, parent2], "Error Check 3")
                 newNN = NeuralNetwork.childFromParents(parent1, parent2)
+                #self.printPopulationErrors([parent1, parent2], "Error Check 4")
                 #Mutate NN:
                 #To-DO:
                 #   Could add functionality to catch double additions and make them the same history values
@@ -59,6 +68,7 @@ class Population:
                 while random.random() < self.addNodeRate:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
                     newNN.insertNode(edgeIndex, self.latestConnectionID+1, self.latestNodeID+1)
+                    #print(self.latestConnectionID, ", ", self.latestNodeID)
                     self.latestConnectionID += 2
                     self.latestNodeID += 1
                 #Disabling nodes:
@@ -70,24 +80,41 @@ class Population:
                     node1 = floor(random.random() * newNN.getNumNodes())
                     node2 = floor(random.random() * newNN.getNumNodes())
                     searchedOptions = 0
-                    while (node1 != node2 and newNN.areConnected(node1,node2) != 1 and searchedOptions < 100):
+                    while (node1 == node2 or newNN.areConnected(node1,node2) == 1 or (node1 < newNN.inputs and node2 < newNN.inputs)):
                         node1 = floor(random.random() * newNN.getNumNodes())
                         node2 = floor(random.random() * newNN.getNumNodes())
-                    if newNN.areConnected(node1,node2) == 0:
-                        newNN.insertConnection(node1, node2, self.latestConnectionID+1)
-                    else:
-                        newNN.enableConnection(newNN.getEdgeFromNodes(node1,node2))
-                    self.latestConnectionID += 1
+                        searchedOptions += 1
+                        if searchedOptions >= 100:
+                            break
+                    if searchedOptions < 100:
+                        if newNN.areConnected(node1,node2) == 0:
+                            newNN.insertConnection(node1, node2, self.latestConnectionID+1)
+                        else:
+                            newNN.enableConnection(newNN.getEdgeFromNodes(node1,node2))
+                        self.latestConnectionID += 1
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
                     newNN.disableConnection(edgeIndex)
-                self.NNs.append(newNN)
                 #Value Mutations:
                 newNN.mutateValues(0.1)
+                newPop.append(newNN)
+                #self.printPopulationErrors([parent1, parent2], "Error Check 5")
+        self.NNs = newPop
         self.size = len(self.NNs)
+        #self.printPopulationErrors(self.NNs, "Error Check 6")
 
-    def makeSpeciesLists(self, NNs, difLimit = 1):
+    def edgeErrors(self, NNs):
+        for NN in self.NNs:
+            if NN.edgeBoundaryError():
+                return True
+        return False
+    
+    def printPopulationErrors(self, NNs, label):
+        for NN in NNs:
+            NN.printErrors(label)
+
+    def makeSpeciesLists(self, NNs, difLimit = 0.5):
         speciesLists = []
         for NN in NNs:
             foundSpecies = False
@@ -122,19 +149,19 @@ class Population:
         return total/len(self.NNs)
     
     def getBestModels(self, portion):
-        num = portion * self.size
+        num = round(portion * len(self.NNs))
         indices = []
         output =[]
         for i in range(num):
             bestIndex = 0
-            bestFitness = self.NNs[0]
+            bestFitness = self.NNs[0].fitness
             for j in range(self.size):
                 if j not in indices and self.NNs[j].fitness > bestFitness:
                     bestIndex = j
                     bestFitness = self.NNs[j].fitness
             output.append(self.NNs[bestIndex])
             indices.append(bestIndex)
-        return output
+        return output, indices
     
     #MODIFIERS:
     def setFitness(self,index,fitness):

@@ -11,12 +11,11 @@ from os import mkdir
 
 class AlgorithmManager:
 
-    def __init__(self, env, numGenerations, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
+    def __init__(self, env, numChildren, numTestsPerChild = 5, survivalRate = 0.05, id = -1):
         self.envHandler = EnvironmentHandler(env)
         self.actionRanges = self.envHandler.getActionRanges()
         self.obsRanges = self.envHandler.getObservationRanges()
         self.population = Population(env, len(self.obsRanges), len(self.actionRanges), numChildren, survivalRate=survivalRate)
-        self.numGenerations = numGenerations
         self.numChildren = numChildren
         self.numTestsPerChild = numTestsPerChild
         self.survivalRate = survivalRate
@@ -24,10 +23,13 @@ class AlgorithmManager:
         self.modelSaved = False
         self.id = id
         self.rootFolder = expanduser("~/Documents/Random Coding Projects/MachineLearningExperiments/NEAT-Genetic-Algorithm/")
-        self.bestModelFolder = "bestModels/" + env + "/"
-        self.trainingLogFolder = "trainingLogs/" + env + "/"
+        self.bestModelFolder = "data/bestModels/" + env + "/"
+        self.bestGenerationModelFolder = "data/bestGenerationModels/" + env + "/"
+        self.trainingLogFolder = "data/trainingLogs/" + env + "/"
         if not isdir(self.rootFolder + self.trainingLogFolder):
             mkdir(self.rootFolder+self.trainingLogFolder)
+        if not isdir(self.rootFolder + self.bestGenerationModelFolder):
+            mkdir(self.rootFolder+self.bestGenerationModelFolder)
         if not isdir(self.rootFolder + self.bestModelFolder):
             mkdir(self.rootFolder+self.bestModelFolder)
         if self.id == -1:
@@ -35,14 +37,17 @@ class AlgorithmManager:
             while isdir(self.rootFolder + self.trainingLogFolder + env + "_" + str(self.id) + "/"):
                 self.id+=1
             self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
+            self.bestGenerationModelFolder = self.bestGenerationModelFolder + env + "_" + str(self.id) + "/"
             mkdir(self.rootFolder + self.trainingLogFolder)
+            mkdir(self.rootFolder + self.bestGenerationModelFolder)
         elif isdir(self.rootFolder + self.trainingLogFolder + env + "_" + str(self.id) + "/"):
             self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
+            self.bestGenerationModelFolder = self.bestGenerationModelFolder + env + "_" + str(self.id) + "/"
             self.loadGeneration(-1)
         else:
             self.trainingLogFolder = self.trainingLogFolder + env + "_" + str(self.id) + "/"
             mkdir(self.rootFolder + self.trainingLogFolder)
-        self.bestModelFilename = env + "_" + str(self.id) + ".txt"
+        self.bestModelFilename = env + "_" + str(self.id) + "_0.txt"
     
     def simulateGeneration(self, printProgress = True, modifyReward=False):
         if printProgress:
@@ -53,30 +58,33 @@ class AlgorithmManager:
         else:
             self.population.evolveGeneration()
         for i in range(self.population.size):
+            self.population.printPopulationErrors(self.population.NNs, "Error Check 7")
             if printProgress and i - lastPrint >= 0.1 * self.numChildren:
                 lastPrint = i
                 print("*",end = "", flush = True)
             reward = self.envHandler.runMultipleSimulations(self.numTestsPerChild, self.population.getNeuralNetwork(i), modifyReward=modifyReward)#, displaying = True))
             self.population.setFitness(i,reward)
             #print(rewards[i])
+            self.population.printPopulationErrors(self.population.NNs, "Error Check 8")
         if printProgress:
             print("]")
         self.numGenerationsDone += 1
         if printProgress:
             print("Average Reward =", self.population.getPopulationAverageFitness())
             print("Best Reward =", self.population.getBestModel().fitness)
+            print("Number of Species = ", len(self.population.makeSpeciesLists(self.population.NNs)))
         
-    def train(self, printProgress = True, displayBest = True, numDisplayIterations = 2, saveOldModel = True, saveBestModelPerGen = True, saveEachGeneration = True, endTests = 100, modifyReward = False):
+    def train(self, numGenerations, printProgress = True, displayBest = True, numDisplayIterations = 2, saveOldModel = True, saveBestModelPerGen = True, saveEachGeneration = True, endTests = 100, modifyReward = False):
         if saveOldModel == True and self.modelSaved:
             self.modelSaved = False
             self.filename = self.makeNewModelFileName()
         printing = printProgress
-        for i in range(self.numGenerations):
+        for i in range(numGenerations):
             if printing:
                 print("\nGeneration ",(i+1),":", sep ="")
             self.simulateGeneration(printProgress = printing, modifyReward = modifyReward)
             if saveBestModelPerGen:
-                self.saveBestModel(printInfo= False)
+                self.saveBestModel(generation = True)
             if saveEachGeneration:
                 self.saveGeneration()
             if displayBest:
@@ -84,21 +92,20 @@ class AlgorithmManager:
         #Resorting the final set with more data:
         print("\nSorting Best Networks...")
         rewards = []
-        bestSet = self.population.getBestModels(0.1)
+        bestSet, indices = self.population.getBestModels(0.1)
         for NN in bestSet:
             rewards.append(self.envHandler.runMultipleSimulations(endTests, NN))
-        newBestSet = []
-        num = len(self.bestSet)
-        for i in range(num):
+        maxIndices = []
+        for _ in range(len(bestSet)):
             maxReward = MININT
             maxIndex = 0
-            for j in range(len(self.bestSet)):
-                if rewards[j] > maxReward:
+            for j in range(len(bestSet)):
+                if rewards[j] > maxReward and maxIndex not in maxIndices:
                     maxReward = rewards[j]
                     maxIndex = j
-            newBestSet.append(self.bestSet.pop(maxIndex))
-            rewards.pop(maxIndex)
-        self.bestSet = newBestSet
+            maxIndices.append(maxIndex)
+            self.population.setFitness(indices[maxIndex],maxReward)
+        print("\nSorting Completed")
 
     def testBest(self, iterations, saving = True):
         avg_reward = 0
@@ -108,34 +115,33 @@ class AlgorithmManager:
         indent = "   "
         print(indent, "- Average Reward = ", avg_reward)
         if saving:
+            self.saveBestModel()
             self.savePerformance(avg_reward, avg_iterations, printInfo = False)
 
     def displayBest(self, iterations = -1, printRewards = False):
         i = 0
         while i < iterations or iterations == -1:
-            avg_reward, avg_iterations = self.envHandler.runSimulation(self.bestSet[0],displaying = True)
+            avg_reward, avg_iterations = self.envHandler.runSimulation(self.population.getBestModel(),displaying = True)
             if printRewards:
                 print("Reward = ", avg_reward, "; Iterations = ", avg_iterations, sep = "")
             i += 1
 
     def makeNewModelFileName(self):
+        value = 0
         filename = self.envHandler.environmentName + "_" + str(self.id)
-        if exists(self.rootFolder + self.bestModelFolder + filename + ".txt"):
-            value = 1
-            while (exists(self.rootFolder + self.bestModelFolder + filename + "_" + str(value) + ".txt")):
-                value+=1
-            filename = filename + "_" + str(value)
+        while (exists(self.rootFolder + self.bestModelFolder + filename + "_" + str(value) + ".txt")):
+            value+=1
+        filename = filename + "_" + str(value)
         self.bestModelFilename = filename +".txt"
     
-    def saveBestModel(self, printInfo = True):
-        self.makeNewModelFileName()
-        file = open(self.rootFolder+self.bestModelFolder+self.bestModelFilename, "w")
-        if printInfo:
-            print("Filename =", self.filename)
+    def saveBestModel(self, generation = False):
+        if generation:
+            file = open(self.rootFolder + self.bestGenerationModelFolder + "generation_" + str(self.numGenerationsDone) + "_bestModel.txt", "w")
+        if not generation:
+            self.makeNewModelFileName()
+            file = open(self.rootFolder+self.bestModelFolder+self.bestModelFilename, "w")
 
         #Writing data:
-        if printInfo:
-            print("Saving neural network...")
         file.write(self.population.getBestModel().getNetworkString())
 
         file.close()
@@ -146,10 +152,12 @@ class AlgorithmManager:
     
     def loadGeneration(self, genNum):  
         if genNum == -1: #get last generation:
+            genNum = 0
             while exists(self.rootFolder + self.trainingLogFolder + "generation_" + str(genNum+1) + ".txt"):
                 genNum += 1
         file = open(self.rootFolder + self.trainingLogFolder + "generation_" + str(genNum) + ".txt", "r")
-        self.population = Population.loadPopulation(file.readLines())
+        self.population = Population.loadPopulation(file.readlines())
+        self.numGenerationsDone = genNum
         file.close()
 
     def saveGeneration(self):
@@ -173,7 +181,7 @@ class AlgorithmManager:
         if exists(self.rootFolder + self.bestModelFolder + self.bestModelFilename):
             if printInfo:   
                 print("Saving performance statistics...")
-            file = open(self.folder + self.filename, "a")
+            file = open(self.rootFolder + self.bestModelFolder + self.bestModelFilename, "a")
             lastline = []
             lastline.append(str(reward)+",")
             lastline.append(str(iterations)+"\n")

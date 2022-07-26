@@ -1,5 +1,6 @@
 from multiprocessing.dummy.connection import families
 import random
+from reprlib import aRepr
 from xmlrpc.client import MAXINT, MININT
 import numpy as np
 import copy
@@ -122,7 +123,7 @@ class NeuralNetwork:
         edgeCount = 0
         for origin in range(inputs):
             for dest in range(inputs, inputs + outputs):
-                newNN.edges.append(Edge(origin, dest, (1- 2* np.random.random()) * 3, True, origin * outputs + (dest-inputs)))
+                newNN.edges.append(Edge(origin, dest, (1 - 2* np.random.random()) * 3, True, origin * outputs + (dest-inputs)))
                 newNN.connectionsTo[dest].append(edgeCount)
                 newNN.connectionsFrom[origin].append(edgeCount)
                 edgeCount +=1
@@ -132,6 +133,8 @@ class NeuralNetwork:
 
     @classmethod
     def childFromParents(cls, parent1, parent2):
+        #parent1.printErrors("Parent 1 Error 1")
+        #parent2.printErrors("Parent 2 Error 1")
         newNN = cls()
 
         newNN.inputs = parent1.inputs
@@ -140,6 +143,8 @@ class NeuralNetwork:
         #Combining nodes
         index1 = 0
         index2 = 0
+        #parent1.printErrors("Parent 1 Error 2")
+        #parent2.printErrors("Parent 2 Error 2")
         while index1 < len(parent1.nodes) or index2 < len(parent2.nodes):
             if index1 < len(parent1.nodes):
                 history1 = parent1.nodes[index1].historyValue
@@ -167,6 +172,8 @@ class NeuralNetwork:
             if newNN.nodes[-1].enabled:
                 newNN.activeNodes += 1
 
+        #parent1.printErrors("Parent 1 Error 3")
+        #parent2.printErrors("Parent 2 Error 3")
         #Creating connection matrices:
         #print("Num Nodes: " + str(len(parent1.nodes)) + "+" + str(len(parent2.nodes)) + " --> " + str(len(newNN.nodes)))
         newNN.connectionsTo = [ [] for _ in range(len(newNN.nodes))]
@@ -176,7 +183,11 @@ class NeuralNetwork:
         index1 = 0
         index2 = 0
         edgeCount = 0
+        #parent1.printErrors("Parent 1 Error 4")
+        #parent2.printErrors("Parent 2 Error 4")
         while index1 < len(parent1.edges) or index2 < len(parent2.edges):
+            #parent1.printErrors("Parent 1 Error 4.1")
+            #parent2.printErrors("Parent 2 Error 4.1")
             if index1 < len(parent1.edges):
                 history1 = parent1.edges[index1].historyValue
             else:
@@ -186,13 +197,22 @@ class NeuralNetwork:
             else:
                 history2 = MAXINT
 
+            #parent1.printErrors("Parent 1 Error 4.2")
+            #parent2.printErrors("Parent 2 Error 4.2")
+
             if history1 < history2:
                 newEdge = parent1.edges[index1]
+                if newEdge.dest >= len(parent1.nodes):
+                    print(parent1.getNetworkString())
+                    print(str(newEdge.origin) + "," + str(newEdge.dest) + "," + str(newEdge.historyValue) + " out of " + str(parent1.getNumNodes()))
                 originHistory = parent1.nodes[newEdge.origin].historyValue
                 destHistory = parent1.nodes[newEdge.dest].historyValue
                 index1 += 1
             elif history2 < history1:
                 newEdge = parent2.edges[index2]
+                if newEdge.dest >= len(parent2.nodes):
+                    print(parent2.getNetworkString())
+                    print(str(newEdge.origin) + "," + str(newEdge.dest) + "," + str(newEdge.historyValue) + " out of " + str(parent2.getNumNodes()))
                 originHistory = parent2.nodes[newEdge.origin].historyValue
                 destHistory = parent2.nodes[newEdge.dest].historyValue
                 index2 += 1
@@ -200,32 +220,52 @@ class NeuralNetwork:
                 threshold = 0.5 + (parent2.fitness - parent1.fitness) / 500
                 if np.random.random() < threshold:
                     newEdge = parent1.edges[index1]
+                    if newEdge.dest >= len(parent1.nodes):
+                        print(parent1.getNetworkString())
+                        print(str(newEdge.origin) + "," + str(newEdge.dest) + "," + str(newEdge.historyValue) + " out of " + str(parent1.getNumNodes()))
                     originHistory = parent1.nodes[newEdge.origin].historyValue
                     destHistory = parent1.nodes[newEdge.dest].historyValue
                 else:
                     newEdge = parent2.edges[index2]
+                    if newEdge.dest >= len(parent2.nodes):
+                        print(parent2.getNetworkString())
+                        print(str(newEdge.origin) + "," + str(newEdge.dest) + "," + str(newEdge.historyValue) + " out of " + str(parent2.getNumNodes()))
                     originHistory = parent2.nodes[newEdge.origin].historyValue
                     destHistory = parent2.nodes[newEdge.dest].historyValue
                 index1 += 1
                 index2 += 1
+            #parent1.printErrors("Parent 1 Error 4.2")
+            #parent2.printErrors("Parent 2 Error 4.2")
 
             newOriginIndex = 0
             while originHistory != newNN.nodes[newOriginIndex].historyValue:
                 newOriginIndex += 1
+                if newOriginIndex >= len(newNN.nodes):
+                    print("Origin ERROR")
             newDestIndex = 0
             while destHistory != newNN.nodes[newDestIndex].historyValue:
                 newDestIndex += 1
+                if newDestIndex >= len(newNN.nodes):
+                    print("DEST ERROR")
+            #parent1.printErrors("Parent 1 Error 4.3")
+            #parent2.printErrors("Parent 2 Error 4.3")
 
-            print(str(newEdge.origin) + "," + str(newEdge.dest) + " --> " + str(newOriginIndex) + "," + str(newDestIndex))
-            newEdge.origin = newOriginIndex
-            newEdge.dest = newDestIndex
-            newNN.edges.append(Edge(newEdge.getString()))
-            newNN.connectionsTo[newDestIndex].append(edgeCount)
-            newNN.connectionsFrom[newOriginIndex].append(edgeCount)
-            if newEdge.enabled:
-                newNN.activeConnections += 1
-            edgeCount += 1
+            #print(str(newEdge.origin) + "," + str(newEdge.dest) + " --> " + str(newOriginIndex) + "," + str(newDestIndex))
+            if newNN.areConnected(newOriginIndex, newDestIndex) == 0:
+                newEdge = Edge(newEdge.getString())
+                newEdge.origin = newOriginIndex
+                newEdge.dest = newDestIndex
+                newNN.edges.append(newEdge)
+                newNN.connectionsTo[newDestIndex].append(edgeCount)
+                newNN.connectionsFrom[newOriginIndex].append(edgeCount)
+                if newEdge.enabled:
+                    newNN.activeConnections += 1
+                edgeCount += 1
+            #parent1.printErrors("Parent 1 Error 4.4")
+            #parent2.printErrors("Parent 2 Error 4.4")
 
+        #parent1.printErrors("Parent 1 Error 5")
+        #parent2.printErrors("Parent 2 Error 5")
         return newNN
 
     @classmethod
@@ -278,6 +318,9 @@ class NeuralNetwork:
         #Insert new edges:
         newEdge1 = Edge(edge.origin,len(self.nodes)-1, edge.weight,True, firstEdgeID)
         newEdge2 = Edge(len(self.nodes)-1, edge.dest, 1, True, firstEdgeID+1)
+        #print("MAKING NEW EDGE " + str(firstEdgeID) + " = " + str(newEdge1.origin) + " --> " + str(newEdge1.dest) + ", old origin index = " + str(self.edges[edgeIndex].origin))
+        #print("MAKING NEW NODE " + str(newNodeID) + " - numNodes = " + str(len(self.nodes)) + ", middle node index = " + str(newEdge1.dest))
+        #print("MAKING NEW EDGE " + str(firstEdgeID+1) + " = " + str(newEdge2.origin) + " --> " + str(newEdge2.dest) + ", old destination = " + str(self.edges[edgeIndex].dest))
         self.edges.append(newEdge1)
         self.edges.append(newEdge2)
 
@@ -306,12 +349,19 @@ class NeuralNetwork:
         self.activeNodes += 1
 
     def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID):
+        self.printErrors("ADDING CONNECTION START")
         if nodeIndex1 == nodeIndex2:
+            return
+        if nodeIndex1 < 0 or nodeIndex1 >= len(self.nodes) or nodeIndex2 < 0 or nodeIndex2 >= len(self.nodes):
+            print("NODE OUT OF BOUNDS")
+            return
+        if self.areConnected(nodeIndex1, nodeIndex2) != 0:
+            #print("ALREADY CONNECTED")
             return
         if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
-        elif self.nodes[nodeIndex2].layerLevel < self.nodes[nodeIndex2].layerLevel:
+        elif self.nodes[nodeIndex2].layerLevel < self.nodes[nodeIndex1].layerLevel:
             firstIndex = nodeIndex2
             secondIndex = nodeIndex1
         else:
@@ -335,6 +385,7 @@ class NeuralNetwork:
             if self.distribution == "norm":
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
+        self.printErrors("ADDING CONNECTION END")
 
     def disableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = False
@@ -342,14 +393,14 @@ class NeuralNetwork:
     def enableConnection(self, edgeIndex):
         self.edges[edgeIndex].enabled = True
     
-    def mutateValues(self, mutationOdds, biasMagnitude = 2, weightMagnitude = 3, scaleMagnitude = 0):
+    def mutateValues(self, mutationOdds, biasMagnitude = 2, weightMagnitude = 3, scaleMagnitude = -1):
         for i in range(len(self.nodes)):
-            if random.random() < mutationOdds:
+            if random.random() < mutationOdds and biasMagnitude != -1:
                 self.nodes[i].bias = (1-2*random.random()) * biasMagnitude
-            if random.random() < mutationOdds:
+            if random.random() < mutationOdds and scaleMagnitude != -1:
                 self.nodes[i].scale = (1-2*random.random()) * scaleMagnitude
         for i in range(len(self.edges)):
-            if random.random() < mutationOdds:
+            if random.random() < mutationOdds and weightMagnitude != -1:
                 self.edges[i].weight = (1-2*random.random()) * weightMagnitude
 
     #---------------------------------------------------
@@ -427,6 +478,72 @@ class NeuralNetwork:
 
     def getNumNodes(self):
         return len(self.nodes)
+    
+    def edgeBoundaryError(self):
+        for edge in self.edges:
+            if edge.origin < 0 or edge.origin >= self.getNumNodes() or edge.dest < 0 or edge.dest >= self.getNumNodes():
+                return True
+        return False
+    
+    def selfReferenceError(self):
+        for edge in self.edges:
+            if edge.origin == edge.dest:
+                return True
+        return False
+    
+    def directCycleError(self):
+        for i in range(len(self.nodes)):
+            for edgeIndex in self.connectionsTo[i]:
+                if self.edges[edgeIndex].origin == i:
+                    return True
+        return False
+    
+    def edgeDirectionError(self):
+        for edge in self.edges:
+            if self.nodes[edge.origin].layerLevel > self.nodes[edge.dest].layerLevel:
+                return True
+        return False
+    
+    def arrayFailureError(self):
+        for i in range(len(self.nodes)):
+            for edgeIndex in self.connectionsTo[i]:
+                if self.edges[edgeIndex].dest != i:
+                    return True
+            for edgeIndex in self.connectionsFrom[i]:
+                if self.edges[edgeIndex].origin != i:
+                    return True
+        return False
+    
+    def printErrors(self, label):
+        error = False
+        if self.edgeBoundaryError():
+            if error == False:
+                print(label)
+                error = True
+            print("EDGE ORIGIN/DEST INDEX ERROR")
+        if self.selfReferenceError():
+            if error == False:
+                print(label)
+                error = True
+            print("EDGE SELF REFERENCE ERROR")
+        if self.directCycleError():
+            if error == False:
+                print(label)
+                error = True
+            print("NODE DIRECT SELF REFERENCE ERROR")
+        if self.arrayFailureError():
+            if error == False:
+                print(label)
+                error = True
+            print("ARRAY FALIURE ERROR")
+        if self.edgeDirectionError():
+            if error == False:
+                print(label)
+                error = True
+            print("EDGE DIRECTION ERROR")
+        if error:
+            print(self.getNetworkString())
+
 
     #---------------------------------------------------
     #OTHER METHODS:
@@ -472,7 +589,7 @@ class NeuralNetwork:
         self.values[nodeIndex] = value
         return value
     
-    def resetFitnesS(self):
+    def resetFitness(self):
         self.fitness = MININT
 
     def activationFunction(self, value, nodeIndex):
@@ -514,7 +631,7 @@ class NeuralNetwork:
                 disjoint += 1
                 index2 += 1
             else:
-                avgBiasDif += abs(self.nodes[index2].bias - otherNetwork.nodes[index2].bias)
+                avgBiasDif += abs(self.nodes[index1].bias - otherNetwork.nodes[index2].bias)
                 index1 += 1
                 index2 += 1
         excess += max(len(self.nodes) - index1, len(otherNetwork.nodes) - index2)
@@ -534,7 +651,7 @@ class NeuralNetwork:
                 disjoint += 1
                 index2 += 1
             else:
-                avgWeightDif += abs(self.edges[index2].weight - otherNetwork.edges[index2].weight)
+                avgWeightDif += abs(self.edges[index1].weight - otherNetwork.edges[index2].weight)
                 index1 += 1
                 index2 += 1
         excess += max(len(self.edges) - index1, len(otherNetwork.edges) - index2)
