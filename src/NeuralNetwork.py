@@ -318,6 +318,8 @@ class NeuralNetwork:
         #Insert new connections:
         self.connectionsFrom.append([len(self.edges)+1])
         self.connectionsTo.append([len(self.edges)])
+        self.connectionsTo[edge.dest].append(len(self.edges)+1)
+        self.connectionsFrom[edge.origin].append(len(self.edges))
 
         #Insert new edges:
         newEdge1 = Edge(edge.origin,len(self.nodes)-1, edge.weight,True, firstEdgeID)
