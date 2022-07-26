@@ -382,15 +382,15 @@ class NeuralNetwork:
             secondIndex = nodeIndex2 
             #Fixing layer levels:
             maxIncoming = 0
-            for edgeIndex in self.connectionsTo[nodeIndex1]:
+            for edgeIndex in self.connectionsTo[firstIndex]:
                 if self.nodes[self.edges[edgeIndex].origin].layerLevel > maxIncoming:
                     maxIncoming = self.nodes[self.edges[edgeIndex].origin].layerLevel
             minOutgoing = 1
-            for edgeIndex in self.connectionsFrom[nodeIndex2]:
+            for edgeIndex in self.connectionsFrom[secondIndex]:
                 if self.nodes[self.edges[edgeIndex].dest].layerLevel < minOutgoing:
                     minOutgoing = self.nodes[self.edges[edgeIndex].dest].layerLevel
-            self.nodes[nodeIndex1].layerLevel = maxIncoming + (minOutgoing-maxIncoming) / 3
-            self.nodes[nodeIndex2].layerLevel = maxIncoming + 2 * (minOutgoing-maxIncoming) / 3
+            self.nodes[firstIndex].layerLevel = maxIncoming + (minOutgoing-maxIncoming) / 3.0
+            self.nodes[secondIndex].layerLevel = maxIncoming + 2.0 * (minOutgoing-maxIncoming) / 3.0
         newEdge1 = Edge(firstIndex, secondIndex, 1,True, newEdgeID)
         if self.randomOnCreation:
             if self.distribution == "rand":
@@ -398,6 +398,8 @@ class NeuralNetwork:
             if self.distribution == "norm":
                 newEdge1.weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.edges.append(newEdge1)
+        self.connectionsTo[secondIndex].append(len(self.edges)-1)
+        self.connectionsFrom[firstIndex].append(len(self.edges)-1)
         self.printErrors("ADDING CONNECTION END")
         return 1
 
@@ -466,6 +468,16 @@ class NeuralNetwork:
             for edge2 in self.connectionsTo[secondIndex]:
                 if edge1 == edge2:
                     return edge1
+        for edge1 in self.connectionsFrom[secondIndex]:
+            for edge2 in self.connectionsTo[firstIndex]:
+                if edge1 == edge2:
+                    print("Backwards connection error")
+                    print(self.getNetworkString())
+                    print("")
+                    self.printErrors("check in edge finder")
+                    print("This should not print")
+                    exit()
+                    return edge1
         return -1
 
     def areConnected(self, nodeIndex1, nodeIndex2): #1 = active conection, 0 = no connection, -1 = disabled connection
@@ -522,7 +534,7 @@ class NeuralNetwork:
                 return True
         return False
     
-    def arrayFailureError(self):
+    def arrayFailureError1(self):
         for i in range(len(self.nodes)):
             for edgeIndex in self.connectionsTo[i]:
                 if self.edges[edgeIndex].dest != i:
@@ -530,6 +542,12 @@ class NeuralNetwork:
             for edgeIndex in self.connectionsFrom[i]:
                 if self.edges[edgeIndex].origin != i:
                     return True
+        return False
+    
+    def arrayFailureError2(self):
+        for i in range(len(self.edges)):
+            if i not in self.connectionsFrom[self.edges[i].origin] or i not in self.connectionsTo[self.edges[i].dest]:
+                return True
         return False
     
     def printErrors(self, label):
@@ -549,11 +567,16 @@ class NeuralNetwork:
                 print(label)
                 error = True
             print("NODE DIRECT SELF REFERENCE ERROR")
-        if self.arrayFailureError():
+        if self.arrayFailureError1():
             if error == False:
                 print(label)
                 error = True
-            print("ARRAY FALIURE ERROR")
+            print("ARRAY FALIURE ERROR 1")
+        if self.arrayFailureError2():
+            if error == False:
+                print(label)
+                error = True
+            print("ARRAY FALIURE ERROR 2")
         if self.edgeDirectionError():
             if error == False:
                 print(label)
