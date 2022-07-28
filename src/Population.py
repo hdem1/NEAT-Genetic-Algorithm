@@ -14,7 +14,7 @@ class Population:
         self.size = size
         self.survivalRate = survivalRate
         self.addNodeRate = 0.1
-        self.disableNodeRate = 0.02
+        self.disableNodeRate = 0.01
         self.addConnectionRate = 0.5
         self.disableConnectionRate = 0.05
         self.inputs = inputs
@@ -24,7 +24,7 @@ class Population:
     
     def makeInitialPopulation(self):
         for i in range(self.size):
-            self.NNs.append(NeuralNetwork.randomBaseNetwork(self.inputs, self.outputs))
+            self.NNs.append(NeuralNetwork.randomBaseNetwork(self.envName, self.inputs, self.outputs))
     
     #EVOLUTION:
     def evolveGeneration(self):
@@ -40,7 +40,7 @@ class Population:
             #Get the new number of NNs in that species:
             popTotalFitness = 0
             for NN in species:
-                popTotalFitness += NN.fitness
+                popTotalFitness += NN.getFitness()
                 NN.species = speciesNum
             newNum = round(popTotalFitness/avgFitness)
             
@@ -61,7 +61,7 @@ class Population:
                 #Make NN:
                 #print("Error Check 3 = ", self.edgeErrors([parent1, parent2]))
                 #self.printPopulationErrors([parent1, parent2], "Error Check 3")
-                newNN = NeuralNetwork.childFromParents(parent1, parent2)
+                newNN = NeuralNetwork.childFromParents(self.envName, parent1, parent2)
                 #self.printPopulationErrors([parent1, parent2], "Error Check 4")
                 #Mutate NN:
                 #To-DO:
@@ -83,16 +83,14 @@ class Population:
                     node1 = floor(random.random() * newNN.getNumNodes())
                     node2 = floor(random.random() * newNN.getNumNodes())
                     searchedOptions = 0
-                    goodPair = False
-                    while (not goodPair and searchedOptions < 100):
+                    val = newNN.insertConnection(node1,node2, self.latestConnectionID+1)
+                    while (val == -1 and searchedOptions < 100):
                         node1 = floor(random.random() * newNN.getNumNodes())
                         node2 = floor(random.random() * newNN.getNumNodes())
                         searchedOptions += 1
                         val = newNN.insertConnection(node1,node2, self.latestConnectionID+1)
-                        if val >= 0:
-                            goodPair = True
-                        if val == 1:
-                            self.latestConnectionID += 1
+                    if val == 1:
+                        self.latestConnectionID += 1
                 #Disabling Connections:
                 while random.random() < self.disableConnectionRate:
                     edgeIndex = floor(random.random() * newNN.getNumEdges())
@@ -132,10 +130,12 @@ class Population:
     #ACCESSORS:
     def getBestModel(self):
         bestNN = self.NNs[0]
-        for NN in self.NNs:
-            if NN.fitness > bestNN.fitness:
-                bestNN = NN
-        return bestNN
+        index = 0
+        for i in range(len(self.NNs)):
+            if self.NNs[i].getFitness() > bestNN.getFitness():
+                bestNN = self.NNs[i]
+                index = i
+        return bestNN, index
     
     def getSize(self):
         return len(self.NNs)
@@ -146,7 +146,7 @@ class Population:
     def getPopulationAverageFitness(self):
         total = 0
         for NN in self.NNs:
-            total += NN.fitness
+            total += NN.getFitness()
         return total/len(self.NNs)
     
     def getBestModels(self, portion):
@@ -155,18 +155,18 @@ class Population:
         output =[]
         for i in range(num):
             bestIndex = 0
-            bestFitness = self.NNs[0].fitness
+            bestFitness = self.NNs[0].getFitness()
             for j in range(self.size):
-                if j not in indices and self.NNs[j].fitness > bestFitness:
+                if j not in indices and self.NNs[j].getFitness() > bestFitness:
                     bestIndex = j
-                    bestFitness = self.NNs[j].fitness
+                    bestFitness = self.NNs[j].getFitness()
             output.append(self.NNs[bestIndex])
             indices.append(bestIndex)
         return output, indices
     
     #MODIFIERS:
-    def setFitness(self,index,fitness, tests):
-        self.NNs[index].changeFitness(fitness,tests)
+    '''def setFitness(self,index,fitness, tests):
+        self.NNs[index].changeFitness(fitness,tests)'''
 
     #FILE READING/WRITING:
     def getString(self):
@@ -199,10 +199,11 @@ class Population:
         for i in range(newPop.size):
             infoLine = lines[currLine].split(",")
             numLines = 1 + int(infoLine[0]) + int(infoLine[1])
-            newPop.NNs.append(NeuralNetwork.networkFromString(lines[currLine:(currLine+numLines)]))
+            newPop.NNs.append(NeuralNetwork.networkFromString(newPop.envName, lines[currLine:(currLine+numLines)]))
             currLine += numLines
         return newPop
     
     def getBestModelString(self):
-        return self.getBestModel().getNetworkString()
+        bestModel, _ = self.getBestModel()
+        return bestModel.getNetworkString()
 

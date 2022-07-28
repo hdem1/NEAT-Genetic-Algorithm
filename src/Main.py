@@ -1,9 +1,10 @@
+from tkinter import N
 from NeuralNetwork import NeuralNetwork
 from AlgorithmManager import AlgorithmManager
 
 
-algoManager = AlgorithmManager("MountainCar-v0",1000)
-algoManager.train(50)
+algoManager = AlgorithmManager("MountainCar-v0",1000, numTestsPerChild=10)
+algoManager.train(20)
 algoManager.testBest(1000)
 algoManager.displayBest()
 

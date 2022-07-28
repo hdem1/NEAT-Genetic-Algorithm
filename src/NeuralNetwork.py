@@ -4,6 +4,7 @@ from reprlib import aRepr
 from xmlrpc.client import MAXINT, MININT
 import numpy as np
 import copy
+from FitnessCalculator import FitnessCalculator
 
 class Node:
     def __init__(self, *args):
@@ -81,7 +82,7 @@ class NeuralNetwork:
     randomOnCreation = True
 
     #INITIALIZERS:
-    def __init__(self):
+    def __init__(self, env):
         #Tracing nodes/edges:
         self.nodes = []
         self.edges = [] 
@@ -96,14 +97,14 @@ class NeuralNetwork:
         self.values = []
         self.visited = []
         # For performance monitoring:
-        self.fitness = MININT
+        self.fitnessCalculator = FitnessCalculator(env)
         self.activeConnections = 0
         self.activeNodes = 0
-        self.testsRun = 0
+        #self.testsRun = 0
 
     @classmethod
-    def randomBaseNetwork(cls, inputs, outputs):
-        newNN = cls()
+    def randomBaseNetwork(cls, envName, inputs, outputs):
+        newNN = cls(envName)
         #Setting constants:
         newNN.inputs = inputs
         newNN.outputs = outputs
@@ -133,10 +134,10 @@ class NeuralNetwork:
         return newNN
 
     @classmethod
-    def childFromParents(cls, parent1, parent2):
+    def childFromParents(cls, envName, parent1, parent2):
         #parent1.printErrors("Parent 1 Error 1")
         #parent2.printErrors("Parent 2 Error 1")
-        newNN = cls()
+        newNN = cls(envName)
 
         newNN.inputs = parent1.inputs
         newNN.outputs = parent1.outputs
@@ -163,7 +164,7 @@ class NeuralNetwork:
                 newNN.nodes.append(Node(parent2.nodes[index2].getString()))
                 index2 += 1
             else:
-                if parent1.fitness > parent2.fitness or (parent1.fitness == parent2.fitness and random.random() < 0.5):
+                if parent1.getFitness() > parent2.getFitness() or (parent1.getFitness() == parent2.getFitness() and random.random() < 0.5):
                     newNN.nodes.append(Node(parent1.nodes[index1].getString()))
                 else:
                     newNN.nodes.append(Node(parent2.nodes[index2].getString()))
@@ -217,7 +218,7 @@ class NeuralNetwork:
                 destHistory = parent2.nodes[newEdge.dest].historyValue
                 index2 += 1
             else:
-                if parent1.fitness > parent2.fitness or (parent1.fitness == parent2.fitness and random.random() < 0.5):
+                if parent1.getFitness() > parent2.getFitness() or (parent1.getFitness() == parent2.getFitness() and random.random() < 0.5):
                     newEdge = parent1.edges[index1]
                     if newEdge.dest >= len(parent1.nodes):
                         print(parent1.getNetworkString())
@@ -265,18 +266,20 @@ class NeuralNetwork:
 
         #parent1.printErrors("Parent 1 Error 5")
         #parent2.printErrors("Parent 2 Error 5")
+        newNN.fixEdges()
+        newNN.printErrors("CREATION FROM PARENTS")
         return newNN
 
     @classmethod
-    def networkFromString(cls, strings):
-        newNN = cls()
+    def networkFromString(cls, envName, strings):
+        newNN = cls(envName)
         firstLine = strings[0].split(",")
         numNodes = int(firstLine[0])
         numEdges = int(firstLine[1])
         newNN.inputs = int(firstLine[2])
         newNN.outputs = int(firstLine[3])
         newNN.species = int(firstLine[4])
-        newNN.testsRun = int(firstLine[6])
+        #newNN.testsRun = int(firstLine[6])
         #Define Nodes:
         for n in range(numNodes):
             newNN.nodes.append(Node(strings[n+1]))
@@ -299,17 +302,25 @@ class NeuralNetwork:
 
     #---------------------------------------------------
     #MODIFIERS:
-    def changeFitness(self,fitness,tests):
+    '''def changeFitness(self,fitness,tests):
         self.fitness = (self.fitness * self.testsRun + fitness * tests) / (self.testsRun + tests)
-        self.testsRun += tests
-
+        self.testsRun += tests'''
+    
+    def updateFitness(self, vals):
+        self.fitnessCalculator.update(vals)
+    
+    def episodeDone(self):
+        self.fitnessCalculator.runComplete()
+    
     def insertNode(self, edgeIndex, firstEdgeID, newNodeID):
+        self.printErrors("ADDING NODE START - NEW EDGE IDs = " + str(firstEdgeID) + ", " + str(firstEdgeID + 1))
         edge = self.edges[edgeIndex]
         originNode = self.nodes[edge.origin]
         destNode = self.nodes[edge.dest]
 
         #disable the current edge:
-        self.edges[edgeIndex].enabled = False
+        self.disableConnection(edgeIndex)
+        self.printErrors("ADDING NODE MIDDLE 1 - NEW EDGE IDs = " + str(firstEdgeID) + ", " + str(firstEdgeID + 1))
 
         #Insert a new node:
         newNode = Node(self.leakyReluActFunctionID, 0, (originNode.layerLevel + destNode.layerLevel) / 2, True, newNodeID)
@@ -329,6 +340,7 @@ class NeuralNetwork:
         #print("MAKING NEW EDGE " + str(firstEdgeID+1) + " = " + str(newEdge2.origin) + " --> " + str(newEdge2.dest) + ", old destination = " + str(self.edges[edgeIndex].dest))
         self.edges.append(newEdge1)
         self.edges.append(newEdge2)
+        self.printErrors("ADDING NODE MIDDLE 2 - NEW EDGE IDs = " + str(firstEdgeID) + ", " + str(firstEdgeID + 1))
 
         if self.randomOnCreation:
             if self.distribution == "rand":
@@ -338,6 +350,7 @@ class NeuralNetwork:
                 self.nodes[-1].bias = (1-2*np.random.normal()) * self.biasMagnitude
                 self.edges[-2].weight = (1-2*np.random.normal()) * self.weightMagnitude
         self.activeNodes += 1
+        self.printErrors("ADDING NODE END - NEW EDGE IDs = " + str(firstEdgeID) + ", " + str(firstEdgeID + 1))
 
     def disableNode(self, nodeIndex):
         self.nodes[nodeIndex].enabled = False
@@ -355,7 +368,7 @@ class NeuralNetwork:
         self.activeNodes += 1
 
     def insertConnection(self, nodeIndex1, nodeIndex2, newEdgeID): #Returns -1 if doesn't work, 0 if enabled previous connection, 1 if inserted new connection
-        self.printErrors("ADDING CONNECTION START")
+        self.printErrors("ADDING CONNECTION START - NEW EDGE ID = " + str(newEdgeID))
         if nodeIndex1 == nodeIndex2:
             return -1
         if nodeIndex1 < 0 or nodeIndex1 >= len(self.nodes) or nodeIndex2 < 0 or nodeIndex2 >= len(self.nodes):
@@ -391,8 +404,13 @@ class NeuralNetwork:
             for edgeIndex in self.connectionsFrom[secondIndex]:
                 if self.nodes[self.edges[edgeIndex].dest].layerLevel < minOutgoing:
                     minOutgoing = self.nodes[self.edges[edgeIndex].dest].layerLevel
-            self.nodes[firstIndex].layerLevel = maxIncoming + (minOutgoing-maxIncoming) / 3.0
-            self.nodes[secondIndex].layerLevel = maxIncoming + 2.0 * (minOutgoing-maxIncoming) / 3.0
+            self.nodes[firstIndex].layerLevel = self.nodes[firstIndex].layerLevel - (self.nodes[firstIndex].layerLevel - maxIncoming) / 3.0
+            self.nodes[secondIndex].layerLevel = self.nodes[secondIndex].layerLevel + (minOutgoing - self.nodes[secondIndex].layerLevel) / 3.0
+            if minOutgoing - maxIncoming <= 0 or self.nodes[firstIndex].layerLevel >= self.nodes[secondIndex].layerLevel:
+                print("NODE SEPARATION ERROR")
+                print(self.getNetworkString())
+                print(firstIndex, ", ", secondIndex)
+                exit()
         newEdge1 = Edge(firstIndex, secondIndex, 1,True, newEdgeID)
         if self.randomOnCreation:
             if self.distribution == "rand":
@@ -402,7 +420,7 @@ class NeuralNetwork:
         self.edges.append(newEdge1)
         self.connectionsTo[secondIndex].append(len(self.edges)-1)
         self.connectionsFrom[firstIndex].append(len(self.edges)-1)
-        self.printErrors("ADDING CONNECTION END")
+        self.printErrors("ADDING CONNECTION END - NEW EDGE ID = " + str(newEdgeID))
         return 1
 
     def disableConnection(self, edgeIndex):
@@ -423,6 +441,9 @@ class NeuralNetwork:
 
     #---------------------------------------------------
     #ACCESSORS:
+    def getFitness(self):
+        return self.fitnessCalculator.getFitness()
+
     def getNetworkString(self):
         output = ""
         #Line 1 - numNodes,numEdges
@@ -431,8 +452,8 @@ class NeuralNetwork:
         output = output + str(self.inputs) + ","
         output = output + str(self.outputs) + ","
         output = output + str(self.species) + ","
-        output = output + str(self.fitness) + ","
-        output = output + str(self.testsRun) + "\n"
+        output = output + str(self.getFitness()) + "\n"
+        #output = output + str(self.testsRun) + "\n"
 
         #Nodes:
         for node in self.nodes:
@@ -473,12 +494,13 @@ class NeuralNetwork:
         for edge1 in self.connectionsFrom[secondIndex]:
             for edge2 in self.connectionsTo[firstIndex]:
                 if edge1 == edge2:
-                    print("Backwards connection error")
-                    print(self.getNetworkString())
-                    print("")
-                    self.printErrors("check in edge finder")
-                    print("This should not print")
-                    exit()
+                    # print("Backwards connection error")
+                    # print("firstIndex = ", firstIndex, "secondIndex = ", secondIndex)
+                    # print(self.getNetworkString())
+                    # print("")
+                    # self.printErrors("check in edge finder", exitProgram = False)
+                    # print("This should not print")
+                    # exit()
                     return edge1
         return -1
 
@@ -532,7 +554,7 @@ class NeuralNetwork:
     
     def edgeDirectionError(self):
         for edge in self.edges:
-            if self.nodes[edge.origin].layerLevel > self.nodes[edge.dest].layerLevel:
+            if self.nodes[edge.origin].layerLevel >= self.nodes[edge.dest].layerLevel:
                 return True
         return False
     
@@ -552,7 +574,7 @@ class NeuralNetwork:
                 return True
         return False
     
-    def printErrors(self, label):
+    def printErrors(self, label, exitProgram = True):
         error = False
         if self.edgeBoundaryError():
             if error == False:
@@ -586,7 +608,8 @@ class NeuralNetwork:
             print("EDGE DIRECTION ERROR")
         if error:
             print(self.getNetworkString())
-            exit()
+            if exitProgram:
+                exit()
 
 
     #---------------------------------------------------
@@ -634,7 +657,7 @@ class NeuralNetwork:
         return value
     
     def resetFitness(self):
-        self.fitness = MININT
+        self.fitnessCalculator.reset()#self.fitness = MININT
 
     def activationFunction(self, value, nodeIndex):
         func = self.nodes[nodeIndex].actFunction
@@ -646,6 +669,44 @@ class NeuralNetwork:
         elif func == self.sigmoidActFunctionID:
             output = 1/(1+np.exp(-value))
         return output
+    
+    def fixEdges(self):
+        numAttempts = 0
+        while self.edgeDirectionError() and numAttempts < 50:
+            numAttempts += 1
+            for edge in self.edges:
+                if self.nodes[edge.origin].layerLevel >= self.nodes[edge.dest].layerLevel:
+                    maxIncoming = 0
+                    for edgeIndex in self.connectionsTo[edge.origin]:
+                        if self.nodes[self.edges[edgeIndex].origin].layerLevel > maxIncoming:
+                            maxIncoming = self.nodes[self.edges[edgeIndex].origin].layerLevel
+                    minOutgoing = 1
+                    for edgeIndex in self.connectionsFrom[edge.dest]:
+                        if self.nodes[self.edges[edgeIndex].dest].layerLevel < minOutgoing:
+                            minOutgoing = self.nodes[self.edges[edgeIndex].dest].layerLevel
+                    self.nodes[edge.origin].layerLevel = maxIncoming + (minOutgoing-maxIncoming) / 3.0
+                    self.nodes[edge.origin].layerLevel = maxIncoming + 2.0 * (minOutgoing-maxIncoming) / 3.0
+        if numAttempts == 50: # If problem can't be solved, just remove problematic edges:
+            i = 0
+            while i < len(self.edges):
+                if self.nodes[self.edges[i].origin].layerLevel >= self.nodes[self.edges[i].dest].layerLevel:
+                    for j in range(len(self.connectionsTo)):
+                        if j == self.edges[i].dest:
+                            self.connectionsTo[j].remove(i)
+                        for k in range(len(self.connectionsTo[j])):
+                            if self.connectionsTo[j][k] > i:
+                                self.connectionsTo[j][k] -= 1
+                    for j in range(len(self.connectionsFrom)):
+                        if j == self.edges[i].origin:
+                            self.connectionsFrom[j].remove(i)
+                        for k in range(len(self.connectionsFrom[j])):
+                            if self.connectionsFrom[j][k] > i:
+                                self.connectionsFrom[j][k] -= 1
+                    self.edges.remove(self.edges[i])
+                    self.activeConnections -= 1
+                else:
+                    i += 1
+        self.printErrors("AFTER FIXING EDGES")
 
     def getDistance(self, otherNetwork):
         #Getting the larger number of genes
@@ -714,16 +775,16 @@ class NeuralNetwork:
     
     #Sorting:
     def __lt__(self, obj):
-        return ((self.fitness) < (obj.fitness))
+        return ((self.getFitness()) < (obj.getFitness()))
   
     def __gt__(self, obj):
-        return ((self.fitness) > (obj.fitness))
+        return ((self.getFitness()) > (obj.getFitness()))
   
     def __le__(self, obj):
-        return ((self.fitness) <= (obj.fitness))
+        return ((self.getFitness()) <= (obj.getFitness()))
   
     def __ge__(self, obj):
-        return ((self.fitness) >= (obj.fitness))
+        return ((self.getFitness()) >= (obj.getFitness()))
   
     def __eq__(self, obj):
-        return (self.fitness == obj.fitness)
+        return (self.getFitness() == obj.getFitness())
