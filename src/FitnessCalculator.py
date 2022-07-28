@@ -59,7 +59,7 @@ class FitnessCalculator:
 
     def getFitness(self):
         output = MININT
-        if len(self.results > 0):  
+        if len(self.results) > 0:  
             output = np.average(self.results) + self.getConsistencyBonus()
         #print(self.results, "-->", output)
         return output
