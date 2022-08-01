@@ -57,7 +57,7 @@ class EnvironmentHandler:
             obs, reward, done, info = self.env.step(action)
             obsArray = np.array(obs, dtype = object).reshape(len(obs), 1)
             totalReward += reward 
-            neuralNetwork.updateFitness([reward])
+            neuralNetwork.updateFitness(reward, obsArray)
             if displaying:
                 self.env.render()
             iterations += 1

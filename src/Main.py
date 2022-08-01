@@ -3,7 +3,7 @@ from NeuralNetwork import NeuralNetwork
 from AlgorithmManager import AlgorithmManager
 
 
-algorithms = ["MCC"]
+algorithms = ["LL"]
 # C = cartpole
 # A = acrobot
 # P = pendulum
@@ -12,8 +12,8 @@ algorithms = ["MCC"]
 # LL = lunar lander
 # BW = Bipedal Walker
 loading = False
-trainingGenerations = 0
-displaying = True
+trainingGenerations = 20
+displaying = False
 id = -1
 
 for algorithm in algorithms:
@@ -25,10 +25,10 @@ for algorithm in algorithms:
     elif algorithm == "A":
         if loading:
             id = 0
-        algoManager = AlgorithmManager("CartPole-v1", 1000, numTestsPerChild=3, id = id)
+        algoManager = AlgorithmManager("Acrobot-v1", 1000, numTestsPerChild=3, id = id)
     elif algorithm == "P":
         if loading:
-            id = 0
+            id = 3
         algoManager = AlgorithmManager("Pendulum-v1", 1000, numTestsPerChild=10, id = id)
     elif algorithm == "MC":
         if loading:
@@ -36,8 +36,8 @@ for algorithm in algorithms:
         algoManager = AlgorithmManager("MountainCar-v0", 1000, numTestsPerChild=5, id = id)
     elif algorithm == "MCC":
         if loading:
-            id = 0
-        algoManager = AlgorithmManager("MountainCarContinuous-v0", 1000, numTestsPerChild=10, id = id)
+            id = 7
+        algoManager = AlgorithmManager("MountainCarContinuous-v0", 1000, numTestsPerChild=4, id = id)
     elif algorithm == "LL":
         if loading:
             id = 0

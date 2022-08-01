@@ -10,14 +10,24 @@ class FitnessCalculator:
         self.env = env
         self.fitness = self.fitnessMin 
         self.results = [] 
+        self.reward = 0
         if self.env == "CartPole-v1" or self.env == "MountainCar-v0":
             self.frames = 0
+        if self.env == "MountainCarContinuous-v0":
+            self.consistencyBonus = 25
+            self.successBonus = 0
+            self.maxXValue = -1.2
 
-    def update(self, values):
+    def update(self, reward, observation):
         if self.env == "CartPole-v1":
             self.frames += 1
         elif self.env == "MountainCar-v0":
             self.frames += 1
+        elif self.env == "MountainCarContinuous-v0":
+            self.reward += reward
+            self.maxXValue = max(self.maxXValue, observation[0])
+        else:
+            self.reward += reward
         '''elif self.env == "Pendulum-v1":
             totalReward += ((1 - abs(obsArray[2][0])/8)**2) * obsArray[0][0] * 10
         elif self.env == "LunarLander-v2":
@@ -34,6 +44,12 @@ class FitnessCalculator:
                 return self.successBonus
             else:
                 return 0
+        elif self.env == "LunarLander-v2":
+            if self.reward >= 200:
+                return self.successBonus
+            else:
+                return 0
+        return 0 
 
     def getConsistencyBonus(self):
         range = np.amax(self.results) - np.amin(self.results)
@@ -53,9 +69,28 @@ class FitnessCalculator:
             value -= (self.frames/200.0)**3 * (self.fitnessMax-self.successBonus - self.consistencyBonus-self.fitnessMin)
             value += self.getSuccessBonus()
             self.results.append(value)
+        elif self.env == "MountainCarContinuous-v0":
+            maxValue = 100
+            minValue = -999
+            maxXValueBonus = 0
+            value = (self.fitnessMax - self.fitnessMin - self.consistencyBonus - self.successBonus - maxXValueBonus)
+            value *= ((self.reward - minValue) / (maxValue - minValue))**4
+            value += self.fitnessMin
+            value += self.getSuccessBonus()
+            value += maxXValueBonus * (self.maxXValue + 1.2) / 1.8
+            self.results.append(value)
+        else:
+            minReward, maxReward = self.getMinMaxReward()
+            value = (self.fitnessMax - self.fitnessMin - self.consistencyBonus - self.successBonus)
+            value *= ((self.reward - minReward) / (maxReward - minReward))
+            value += self.fitnessMin
+            value += self.getSuccessBonus()
+            self.results.append(value)
+
         #Reset values:
         if self.env == "CartPole-v1" or self.env == "MountainCar-v0":
             self.frames = 0
+        self.reward = 0
 
     def getFitness(self):
         output = MININT
@@ -66,3 +101,23 @@ class FitnessCalculator:
     
     def reset(self):
         self.results = []
+    
+    def getMinMaxReward(self):
+        if self.env == "CartPole-v1":
+            return 0, 500
+        elif self.env == "MountainCar-v0":
+            return -200, 0
+        elif self.env == "MountainCarContinuous-v0":
+            return -100, 100
+        elif self.env == "Acrobot-v1":
+            return -100, 0
+        elif self.env == "Pendulum-v1":
+            return 200 * (-16.2736044), 0
+        elif self.env == "BipedalWalker-v3":
+            return -150, 350
+        elif self.env == "CarRacing-v1":
+            return -200, 1000
+        elif self.env == "LunarLander-v2":
+            return -150, 260
+        else:
+            return 0, 100

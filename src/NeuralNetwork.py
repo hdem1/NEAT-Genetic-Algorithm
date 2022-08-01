@@ -306,8 +306,8 @@ class NeuralNetwork:
         self.fitness = (self.fitness * self.testsRun + fitness * tests) / (self.testsRun + tests)
         self.testsRun += tests'''
     
-    def updateFitness(self, vals):
-        self.fitnessCalculator.update(vals)
+    def updateFitness(self, reward, observation):
+        self.fitnessCalculator.update(reward, observation)
     
     def episodeDone(self):
         self.fitnessCalculator.runComplete()
@@ -317,6 +317,9 @@ class NeuralNetwork:
         edge = self.edges[edgeIndex]
         originNode = self.nodes[edge.origin]
         destNode = self.nodes[edge.dest]
+        if destNode.layerLevel - originNode.layerLevel <= 1e-9:
+            print("failed node add attempt")
+            return
 
         #disable the current edge:
         self.disableConnection(edgeIndex)
@@ -326,15 +329,24 @@ class NeuralNetwork:
         newNode = Node(self.leakyReluActFunctionID, 0, (originNode.layerLevel + destNode.layerLevel) / 2, True, newNodeID)
         self.nodes.append(newNode)
 
+        if destNode.layerLevel <= originNode.layerLevel:
+            print("impending layer level error 2")
+
         #Insert new connections:
         self.connectionsFrom.append([len(self.edges)+1])
         self.connectionsTo.append([len(self.edges)])
         self.connectionsTo[edge.dest].append(len(self.edges)+1)
         self.connectionsFrom[edge.origin].append(len(self.edges))
 
+        if destNode.layerLevel <= originNode.layerLevel:
+            print("impending layer level error 3")
+
         #Insert new edges:
         newEdge1 = Edge(edge.origin,len(self.nodes)-1, edge.weight,True, firstEdgeID)
         newEdge2 = Edge(len(self.nodes)-1, edge.dest, 1, True, firstEdgeID+1)
+
+        if destNode.layerLevel <= originNode.layerLevel:
+            print("impending layer level error 4")
         #print("MAKING NEW EDGE " + str(firstEdgeID) + " = " + str(newEdge1.origin) + " --> " + str(newEdge1.dest) + ", old origin index = " + str(self.edges[edgeIndex].origin))
         #print("MAKING NEW NODE " + str(newNodeID) + " - numNodes = " + str(len(self.nodes)) + ", middle node index = " + str(newEdge1.dest))
         #print("MAKING NEW EDGE " + str(firstEdgeID+1) + " = " + str(newEdge2.origin) + " --> " + str(newEdge2.dest) + ", old destination = " + str(self.edges[edgeIndex].dest))
@@ -386,10 +398,10 @@ class NeuralNetwork:
             self.enableConnection(self.getEdgeFromNodes(nodeIndex1, nodeIndex2))
             return 0
 
-        if self.nodes[nodeIndex2].layerLevel > self.nodes[nodeIndex1].layerLevel:
+        if self.nodes[nodeIndex2].layerLevel - self.nodes[nodeIndex1].layerLevel > 1e-9:
             firstIndex = nodeIndex1
             secondIndex = nodeIndex2
-        elif self.nodes[nodeIndex2].layerLevel < self.nodes[nodeIndex1].layerLevel:
+        elif self.nodes[nodeIndex2].layerLevel - self.nodes[nodeIndex1].layerLevel < -1 * 1e-9:
             firstIndex = nodeIndex2
             secondIndex = nodeIndex1
         else:
@@ -667,6 +679,7 @@ class NeuralNetwork:
             alpha = 0.05
             output = max(alpha * value, value)
         elif func == self.sigmoidActFunctionID:
+            value = min(max(value, -100), 100)
             output = 1/(1+np.exp(-value))
         return output
     
