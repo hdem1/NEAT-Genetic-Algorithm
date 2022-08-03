@@ -3,6 +3,7 @@ import gym
 import numpy as np
 from NeuralNetwork import NeuralNetwork
 from FitnessCalculator import FitnessCalculator
+from TerminationDeterminer import TerminationDeterminer
 
 class EnvironmentHandler:
 
@@ -11,6 +12,7 @@ class EnvironmentHandler:
         self.environmentName = environment
         self.observationSpace = self.env.observation_space
         self.actionSpace = self.env.action_space
+        self.terminationDeterminer = TerminationDeterminer(environment)
     
     def closeEnvironment(self):
         self.env.close()
@@ -61,6 +63,7 @@ class EnvironmentHandler:
             if displaying:
                 self.env.render()
             iterations += 1
+            done = self.terminationDeterminer.checkTermination(done, totalReward, reward, obsArray)
         neuralNetwork.episodeDone()
         return totalReward, iterations, neuralNetwork.getFitness()
     
