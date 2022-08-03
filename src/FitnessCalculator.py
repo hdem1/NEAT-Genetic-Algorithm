@@ -11,27 +11,31 @@ class FitnessCalculator:
         self.fitness = self.fitnessMin 
         self.results = [] 
         self.reward = 0
+        self.maxLength = -1
         if self.env == "CartPole-v1" or self.env == "MountainCar-v0":
             self.frames = 0
         if self.env == "MountainCarContinuous-v0":
             self.consistencyBonus = 25
             self.successBonus = 0
             self.maxXValue = -1.2
+        if self.env == "LunarLander-v2":
+            self.maxLength = 1000
 
-    def update(self, reward, observation):
+    def update(self, done, totalReward, iterations, reward, obsArray):
         if self.env == "CartPole-v1":
             self.frames += 1
         elif self.env == "MountainCar-v0":
             self.frames += 1
         elif self.env == "MountainCarContinuous-v0":
             self.reward += reward
-            self.maxXValue = max(self.maxXValue, observation[0])
+            self.maxXValue = max(self.maxXValue, obsArray[0])
         else:
             self.reward += reward
         '''elif self.env == "Pendulum-v1":
             totalReward += ((1 - abs(obsArray[2][0])/8)**2) * obsArray[0][0] * 10
         elif self.env == "LunarLander-v2":
             totalReward += 3 - (obsArray[1][0] + 1.5)'''
+        return self.checkTermination(done, totalReward, iterations, reward, obsArray)
         
     def getSuccessBonus(self):
         if self.env == "CartPole-v1":
@@ -91,6 +95,12 @@ class FitnessCalculator:
         if self.env == "CartPole-v1" or self.env == "MountainCar-v0":
             self.frames = 0
         self.reward = 0
+    
+    def checkTermination(self, done, totalReward, iterations, reward, obs):
+        if self.env == "LunarLander-v2": 
+            if iterations > 800:
+                return True
+        return done
 
     def getFitness(self):
         output = MININT
@@ -118,6 +128,6 @@ class FitnessCalculator:
         elif self.env == "CarRacing-v1":
             return -200, 1000
         elif self.env == "LunarLander-v2":
-            return -150, 260
+            return self.maxLength * (-0.3) - 100, 270
         else:
             return 0, 100

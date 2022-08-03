@@ -306,8 +306,8 @@ class NeuralNetwork:
         self.fitness = (self.fitness * self.testsRun + fitness * tests) / (self.testsRun + tests)
         self.testsRun += tests'''
     
-    def updateFitness(self, reward, observation):
-        self.fitnessCalculator.update(reward, observation)
+    def updateFitness(self, done, totalReward, iterations, reward, obsArray):
+        return self.fitnessCalculator.update(done, totalReward, iterations, reward, obsArray)
     
     def episodeDone(self):
         self.fitnessCalculator.runComplete()
