@@ -97,7 +97,7 @@ class FitnessCalculator:
         if len(self.results) > 0:  
             output = np.average(self.results) + self.getConsistencyBonus()
         #print(self.results, "-->", output)
-        return output
+        return min(max(output, self.fitnessMin), self.fitnessMax)
     
     def reset(self):
         self.results = []
