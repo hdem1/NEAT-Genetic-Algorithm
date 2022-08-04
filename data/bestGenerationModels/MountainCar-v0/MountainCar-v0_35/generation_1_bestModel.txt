@@ -1,0 +1,12 @@
+5,6,2,3,0,<bound method NeuralNetwork.getFitness of <NeuralNetwork.NeuralNetwork object at 0x7fd9d0a4cee0>>
+0,0,0,True,0,1
+0,0,0,True,1,1
+2,0,1,True,2,1
+2,0,1,True,3,1
+2,0,1,True,4,1
+0,2,-0.8089433477039012,True,0
+0,3,2.2678750891999813,True,1
+0,4,-0.9842853309033002,True,2
+1,2,-2.654207050112171,True,3
+1,3,-0.40236111622518766,True,4
+1,4,2.3586077183283436,True,5
